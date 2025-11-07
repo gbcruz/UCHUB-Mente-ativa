@@ -1,9 +1,11 @@
+import { ROUTES } from "@/app/_routes";
+import { CreateAccountPopUp } from "@/app/popUps/professorOuAluno";
 import { GradientButton } from "@/components/gradientButton";
 import { InputText } from "@/components/inputText";
 import { backgroundStyles, Gradient } from "@/styles/background";
 import { globalStyles } from "@/styles/global";
-//import { router } from "expo-router";
-import React from "react";
+import { router } from "expo-router";
+import React, { useState } from "react";
 import { StyleSheet, Text, useWindowDimensions, View } from "react-native";
 
 
@@ -15,6 +17,18 @@ export default function Index() {
     const titleFontSize = Math.max(28, Math.min(64, width * 0.12));
     const topPadding = Math.max(24, height * 0.06); 
     const contentPaddingBottom = Math.max(24, height * 0.05);
+
+    const [isPopUpVisible, setIsPopUpVisible] = useState(false);
+
+    function handleStudentSelection() {
+        setIsPopUpVisible(false);
+        router.navigate(ROUTES.CADASTRO_ALUNO);
+    }
+
+    function handleTeacherSelection() {
+        setIsPopUpVisible(false);
+        router.navigate(ROUTES.CADASTRO_PROFESSOR);
+    }
 
     return (
         <View style={backgroundStyles.container}>
@@ -41,7 +55,19 @@ export default function Index() {
                         <GradientButton title="Entrar"/>
                     </View>
 
-                    <Text style={styles.createAccount}>Criar Conta</Text>
+                    <Text 
+                style={styles.createAccount}
+                onPress={() => setIsPopUpVisible(true)}
+            >
+                Criar Conta
+            </Text>
+
+            <CreateAccountPopUp 
+                visible={isPopUpVisible}
+                onClose={() => setIsPopUpVisible(false)}
+                onSelectStudent={handleStudentSelection}
+                onSelectTeacher={handleTeacherSelection}
+            />
                 </View>
             </View>
         </View>
