@@ -36,7 +36,7 @@ export default function Index() {
 
     return (
         <View style={backgroundStyles.container}>
-            <Gradient />
+            <Gradient/>
             <View style={[styles.page, { paddingTop: topPadding, paddingBottom: contentPaddingBottom }]}>
                 <View style={styles.top}>
                     <Text style={[styles.title, { fontSize: titleFontSize }]}>
