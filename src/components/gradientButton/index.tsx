@@ -7,6 +7,10 @@ import { gradientColors, gradientEnd, gradientStart, styles } from "./styles";
 //Declarando a tipagem das props que o componente Button vai receber
 type Props = TouchableOpacityProps & { 
     title: string;
+    width?: number | string;
+    height?: number;
+    fontSize?: number;
+    gradientColor?: [string, string];
 }
 
 //Componente Button, que sempre recebe a props title
@@ -27,4 +31,7 @@ export function GradientButton({title, style, ...rest} : Props) {
             </LinearGradient>
         </TouchableOpacity>
     );
+    
 }
+// Export default 
+export default GradientButton;
