@@ -1,4 +1,3 @@
-// ...existing code...
 import { LinearGradient } from "expo-linear-gradient";
 import React from "react";
 import { StyleSheet } from "react-native";
@@ -22,4 +21,3 @@ export function Gradient() {
         />
     );
 }
-// ...existing code...
