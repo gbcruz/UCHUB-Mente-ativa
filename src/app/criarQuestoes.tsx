@@ -1,88 +1,128 @@
-import React, { useState } from 'react';
-import { Gradient } from "@/styles/background";
-import { StyleSheet, Text, View, TextInput, ScrollView, Platform } from "react-native";
-import { colors } from '../components/theme/colors';
-import {space } from '../components/theme/spacing';
-
-
-import CardEnunciado from '@/components/cards/cardEnunciado';
-import CardAlternativas from '@/components/cards/cardAlternativas';
-import CardExplicacao from '@/components/cards/cardExplicacao';
-
+import React, { useState } from "react";
+import { View, Text, ScrollView, SafeAreaView, StyleSheet, TouchableOpacity } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
+import { backgroundStyles, Gradient } from "@/styles/background";
+import GradientButton from "@/components/gradientButton";
+import CardEnunciado from "@/components/cards/cardEnunciado";
+import CardAlternativas from "@/components/cards/cardAlternativas";
 export default function CriarQuestoes() {
+    const [enunciado, setEnunciado] = useState("");
+    const [alternativas, setAlternativas] = useState<string[]>(["", "", "", "", ""]);
 
-  const [enunciado, setEnunciado] = useState('');
-  const [alternativas, setAlternativas] = useState<string[]>(['', '', '', '', '']);
+    const handleChangeAlt = (index: number, value: string) => {
+        const next = [...alternativas];
+        next[index] = value;
+        setAlternativas(next);
+    };
 
-  const handleChangeAlt = (index: number, value: string) => {
-    const next = [...alternativas];
-    next[index] = value;
-    setAlternativas(next);
-  };
+    const handleSalvar = () => {
+        // Integrar com banco de dados
+        console.log({ enunciado, alternativas });
+    };
 
-  const handleSalvar = () => {
-    console.log({ enunciado, alternativas });
-    // TODO: integrar com API/async storage
-  };
+    return (
+        <View style={backgroundStyles.container}>
+            <Gradient />
 
-  return (
-    <Gradient>
-      <Text>Criar questões</Text>
-      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-        {/* Título da tela */}
-        <Text style={styles.bigTitle}>Questão 5</Text>
+            <SafeAreaView style={styles.container}>
+                <View style={styles.header}>
+                    <TouchableOpacity
+                        style={styles.roundIcon}
+                        onPress={() => {
+                        }}
+                    >
+                        <Ionicons name="chevron-back" size={22} color="#fff" />
+                    </TouchableOpacity>
 
-        {/* Card do enunciado */}
-        <CardEnunciado title="Enunciado da questão...">
-          <TextInput
-            style={styles.textArea}
-            placeholder="Digite o enunciado aqui..."
-            placeholderTextColor="#9aa0a6"
-            multiline
-            value={enunciado}
-            onChangeText={setEnunciado}
-          />
-        </CardEnunciado>
+                    <TouchableOpacity style={styles.saveChip} onPress={handleSalvar}>
+                        <Text style={styles.saveChipText}>Salvar</Text>
+                    </TouchableOpacity>
+                </View>
 
-        {/* Alternativas A–E com o mesmo componente */}
-        {['A', 'B', 'C', 'D', 'E'].map((letter, idx) => (
-          <CardAlternativas
-            key={letter}
-            label={`Alternativa ${letter}`}
-            value={alternativas[idx]}
-            onChangeText={(v) => handleChangeAlt(idx, v)}
-          />
-        ))}
+                <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+                    <Text style={styles.screenTitle}>Questão 5</Text>
 
-        {/* Botão Explicação */}
-        <CardExplicacao label="Explicação" onPress={() => console.log('explicação')} style={{ marginTop: space.sm }} />
+                    {/* Card do enunciado*/}
+                    <View style={styles.enunciadoOuter}>
+                        <CardEnunciado
+                            title="Enunciado da questão..."
+                            value={enunciado}
+                            onChangeText={setEnunciado}
+                        />
+                    </View>
+                    {/* Card das alternativas */}
+                    {["A", "B", "C", "D", "E"].map((letter, idx) => (
+                        <CardAlternativas
+                            key={letter}
+                            label={`Alternativa ${letter}`}
+                            value={alternativas[idx]}
+                            onChangeText={(v) => handleChangeAlt(idx, v)}
+                        />
+                    ))}
 
-        {/* Espaçador final */}
-        <View style={{ height: Platform.OS === 'ios' ? 24 : 16 }} />
-
-      </ScrollView>
-    </Gradient>
-  );
-
+                    {/* Botão de explicação */}
+                    <View style={{ marginTop: 12, marginBottom: 12 }}>
+                        <GradientButton title="Explicação" onPress={() => console.log("explicação")} />
+                    </View>
+                </ScrollView>
+            </SafeAreaView>
+        </View>
+    );
 }
 
 const styles = StyleSheet.create({
-  content: {
-    paddingHorizontal: 20,
-    paddingBottom: 24
-  },
-  bigTitle: {
-    textAlign: 'center',
-    color: '#FFFFFF',
-    fontSize: 22,
-    fontWeight: '800',
-    marginTop: 8,
-    marginBottom: 16
-  },
-  textArea: {
-    minHeight: 100,
-    textAlignVertical: 'top',
-    color: '#1f1b2e',
-    fontSize: 14
-  },
+    /* LAYOUT GERAL */
+    container: { flex: 1 },
+
+    /* HEADER (ícone de voltar e botão salvar) */
+    header: {
+        flexDirection: "row",
+        alignItems: "center",
+        justifyContent: "space-between",
+        paddingHorizontal: 18,
+        paddingTop: 8,
+        paddingBottom: 4,
+    },
+    roundIcon: {
+        width: 36,
+        height: 36,
+        borderRadius: 18,
+        alignItems: "center",
+        justifyContent: "center",
+        backgroundColor: "rgba(255,255,255,0.15)",
+    },
+    saveChip: {
+        paddingHorizontal: 14,
+        paddingVertical: 6,
+        borderRadius: 16,
+        backgroundColor: "rgba(255,255,255,0.25)",
+    },
+    saveChipText: { color: "#fff", fontWeight: "700" },
+
+
+    content: { paddingHorizontal: 20, paddingBottom: 28 },
+    screenTitle: {
+        textAlign: "center",
+        color: "#FFFFFF",
+        fontSize: 26,
+        fontWeight: "800",
+        marginTop: 12,
+        marginBottom: 16,
+    },
+
+
+    enunciadoOuter: {
+        backgroundColor: "rgba(255,255,255,0.15)",
+        borderRadius: 16,
+        padding: 12,
+        marginBottom: 14,
+    },
+    enunciadoInner: {
+        backgroundColor: "#f6e9ef",
+        borderRadius: 12,
+        padding: 16,
+
+        shadowOpacity: 0.08,
+        elevation: 2,
+    },
 });
