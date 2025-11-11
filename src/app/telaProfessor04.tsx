@@ -1,10 +1,13 @@
-import React from "react";
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from "react-native";
-import { LinearGradient } from "expo-linear-gradient";
 import GradientButton from "@/components/gradientButton";
 import IconBack from "@/components/icons/iconBack";
 import IconHome from "@/components/icons/iconHome";
 import IconNext from "@/components/icons/iconNext";
+import { MateriaButton } from "@/components/materiaButton";
+import { LinearGradient } from "expo-linear-gradient";
+import React from "react";
+import { Dimensions, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+
+const { width, height } = Dimensions.get("window");
 
 export default function telaProfessor04({ navigation, route }: any) {
   
@@ -12,7 +15,6 @@ export default function telaProfessor04({ navigation, route }: any) {
   const ano = route?.params?.ano || "Ano";
   const conteudo = route?.params?.conteudo || "Conteúdo";
 
-  // Questões desse conteúdo
   const questoes = [
     "Dois terços de 90 é?",
     "Simplifique 12/18",
@@ -39,16 +41,15 @@ export default function telaProfessor04({ navigation, route }: any) {
       <Text style={styles.titulo}>{conteudo}</Text>
 
       {/* Lista de questões */}
-      <ScrollView style={styles.lista}>
+      <ScrollView 
+        style={styles.lista} 
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.listaContent}
+      >
         {questoes.map((item, index) => (
-          <GradientButton
+          <MateriaButton
             key={index}
-            title={`${index + 1}. ${item}`}
-            width={"100%"}
-            height={48}
-            fontSize={15}
-            gradientColor={["#8E5BF7", "#B98BFF"]}
-            style={styles.botao}
+            nome={`${index + 1}. ${item}`}
             onPress={() =>
               navigation.navigate("telaProfessor05", {
                 materia,
@@ -78,12 +79,12 @@ export default function telaProfessor04({ navigation, route }: any) {
       </View>
 
       {/* Botões Criar e Editar */}
-      <View style={styles.footer}>
+ <View style={styles.footer}>
         <GradientButton
           title="Criar Atv"
-          width={"45%"}
-          height={45}
-          fontSize={15}
+          width={"48%"}
+          height={50}
+          fontSize={14}
           gradientColor={["#0656E8", "#00A8FF"]}
           onPress={() =>
             navigation.navigate("telaProfessor05", {
@@ -97,9 +98,9 @@ export default function telaProfessor04({ navigation, route }: any) {
 
         <GradientButton
           title="Editar"
-          width={"45%"}
-          height={45}
-          fontSize={15}
+          width={"48%"}
+          height={50}
+          fontSize={14}
           gradientColor={["#0656E8", "#00A8FF"]}
           onPress={() =>
             navigation.navigate("telaProfessor05", {
@@ -120,34 +121,42 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     alignItems: "center",
-    paddingTop: 35,
+    paddingTop: height * 0.04,
+    paddingHorizontal: width * 0.08,
   },
   header: {
-    width: "85%",
+    width: "100%",
     flexDirection: "row",
     justifyContent: "space-between",
-    marginBottom: 15,
+    marginBottom: height * 0.02,
   },
   titulo: {
     color: "#fff",
     fontWeight: "700",
-    fontSize: 24,
+    fontSize: width * 0.06,
     textAlign: "center",
-    marginBottom: 25,
+    marginBottom: height * 0.03,
   },
   lista: {
-    width: "85%",
+    width: "100%",
+    flex: 1,
   },
-  botao: {
-    marginBottom: 12,
+  listaContent: {
+    flexGrow: 1,
+    justifyContent: "center",
+    alignItems: "center",
   },
   nextArea: {
-    marginTop: 18,
+    marginTop: height * 0.02,
+    marginBottom: height * 0.02,
   },
   footer: {
-    width: "85%",
+    width: "100%",
     flexDirection: "row",
     justifyContent: "space-between",
-    marginTop: 20,
+    alignItems: "center",
+    marginTop: height * 0.02,
+    marginBottom: height * 0.02,
+    gap: width * 0.03,
   },
 });

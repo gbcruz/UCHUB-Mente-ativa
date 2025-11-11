@@ -1,17 +1,17 @@
-import React from "react";
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from "react-native";
-import { LinearGradient } from "expo-linear-gradient";
-import GradientButton from "@/components/gradientButton";
 import IconBack from "@/components/icons/iconBack";
 import IconHome from "@/components/icons/iconHome";
 import IconNext from "@/components/icons/iconNext";
+import { MateriaButton } from "@/components/materiaButton";
+import { LinearGradient } from "expo-linear-gradient";
+import React from "react";
+import { Dimensions, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+
+const { width, height } = Dimensions.get("window");
 
 export default function telaProfessor02({ navigation, route }: any) {
   
-  // Recebe a matéria da tela anterior
   const materia = route?.params?.materia || "Matéria";
 
-  // Lista de anos disponíveis
   const anos = ["6º ano", "7º ano", "8º ano", "9º ano", "1º ano EM"];
 
   return (
@@ -32,33 +32,29 @@ export default function telaProfessor02({ navigation, route }: any) {
       <Text style={styles.titulo}>{materia}</Text>
 
       {/* Botões dos anos */}
-      <ScrollView style={styles.lista}>
-        {anos.map((item, index) => (
-          <GradientButton
+      <ScrollView 
+        style={styles.lista}
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.listaContent}
+      >
+        {anos.map((ano, index) => (
+          <MateriaButton
             key={index}
-            title={item}
-            width={"100%"}
-            height={48}
-            fontSize={16}
-            gradientColor={["#8E5BF7", "#B98BFF"]}
-            style={styles.botao}
+            nome={ano}
             onPress={() =>
-              navigation.navigate("telaProfessor03", {
-                materia,
-                ano: item,
-              })
+              navigation.navigate("telaProfessor03", { materia, ano })
             }
           />
         ))}
       </ScrollView>
 
-      {/* Botão próximo automático → 1º ano */}
+      {/* Botão próximo automático */}
       <View style={styles.nextArea}>
         <TouchableOpacity
           onPress={() =>
             navigation.navigate("telaProfessor03", {
               materia,
-              ano: anos[0],
+              ano: anos[anos.length - 1],
             })
           }
         >
@@ -74,27 +70,33 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     alignItems: "center",
-    paddingTop: 35,
+    paddingTop: height * 0.04,
+    paddingHorizontal: width * 0.08,
   },
   header: {
-    width: "85%",
+    width: "100%",
     flexDirection: "row",
     justifyContent: "space-between",
-    marginBottom: 10,
+    marginBottom: height * 0.02,
   },
   titulo: {
     color: "#fff",
     fontWeight: "700",
-    fontSize: 24,
-    marginBottom: 25,
+    fontSize: width * 0.06,
+    textAlign: "center",
+    marginBottom: height * 0.03,
   },
   lista: {
-    width: "85%",
+    width: "100%",
+    flex: 1,
   },
-  botao: {
-    marginBottom: 12,
+  listaContent: {
+    flexGrow: 1,
+    justifyContent: "center",
+    alignItems: "center",
   },
   nextArea: {
-    marginTop: 20,
+    marginTop: height * 0.02,
+    marginBottom: height * 0.02,
   },
 });

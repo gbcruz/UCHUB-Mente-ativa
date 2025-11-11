@@ -1,17 +1,19 @@
-import React from "react";
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from "react-native";
-import { LinearGradient } from "expo-linear-gradient";
 import GradientButton from "@/components/gradientButton";
 import IconBack from "@/components/icons/iconBack";
 import IconHome from "@/components/icons/iconHome";
 import IconNext from "@/components/icons/iconNext";
+import { MateriaButton } from "@/components/materiaButton";
+import { LinearGradient } from "expo-linear-gradient";
+import React from "react";
+import { Dimensions, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+
+const { width, height } = Dimensions.get("window");
 
 export default function telaProfessor03({ navigation, route }: any) {
   
   const materia = route?.params?.materia || "Matéria";
   const ano = route?.params?.ano || "Ano";
 
-  // Conteúdos da matéria
   const conteudos = ["Fração", "Porcentagem", "Geometria", "Álgebra"];
 
   return (
@@ -32,21 +34,20 @@ export default function telaProfessor03({ navigation, route }: any) {
       <Text style={styles.titulo}>{ano}</Text>
 
       {/* Lista de conteúdos */}
-      <ScrollView style={styles.lista}>
-        {conteudos.map((item, index) => (
-          <GradientButton
+      <ScrollView 
+        style={styles.lista}
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.listaContent}
+      >
+        {conteudos.map((conteudo, index) => (
+          <MateriaButton
             key={index}
-            title={item}
-            width={"100%"}
-            height={48}
-            fontSize={16}
-            gradientColor={["#8E5BF7", "#B98BFF"]}
-            style={styles.botao}
+            nome={conteudo}
             onPress={() =>
               navigation.navigate("telaProfessor04", {
                 materia,
                 ano,
-                conteudo: item,
+                conteudo,
               })
             }
           />
@@ -72,9 +73,9 @@ export default function telaProfessor03({ navigation, route }: any) {
       <View style={styles.footer}>
         <GradientButton
           title="Editar"
-          width={"85%"}
-          height={48}
-          fontSize={17}
+          width={"100%"}
+          height={50}
+          fontSize={14}
           gradientColor={["#0656E8", "#00A8FF"]}
           onPress={() =>
             navigation.navigate("telaProfessor04", {
@@ -94,32 +95,38 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     alignItems: "center",
-    paddingTop: 35,
+    paddingTop: height * 0.04,
+    paddingHorizontal: width * 0.08,
   },
   header: {
-    width: "85%",
+    width: "100%",
     flexDirection: "row",
     justifyContent: "space-between",
-    marginBottom: 15,
+    marginBottom: height * 0.02,
   },
   titulo: {
     color: "#fff",
     fontWeight: "700",
-    fontSize: 24,
+    fontSize: width * 0.06,
     textAlign: "center",
-    marginBottom: 25,
+    marginBottom: height * 0.03,
   },
   lista: {
-    width: "85%",
+    width: "100%",
+    flex: 1,
   },
-  botao: {
-    marginBottom: 12,
+  listaContent: {
+    flexGrow: 1,
+    justifyContent: "center",
+    alignItems: "center",
   },
   nextArea: {
-    marginTop: 20,
+    marginTop: height * 0.02,
+    marginBottom: height * 0.02,
   },
   footer: {
-    width: "85%",
-    marginTop: 18,
+    width: "100%",
+    marginTop: height * 0.02,
+    marginBottom: height * 0.02,
   },
 });
