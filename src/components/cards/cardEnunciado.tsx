@@ -72,21 +72,12 @@ export default function CardEnunciado({
 const styles = StyleSheet.create({
     card: {
         backgroundColor: '#FFFFFF',
-        // borderRadius: radius.md + 6,
-        // padding: space.lg,
-        // marginBottom: space.lg,
-        shadowColor: '#000',
-        shadowOpacity: 0.12,
-        shadowRadius: 12,
-        shadowOffset: { width: 0, height: 6 },
-        elevation: 5,
-        borderRadius: 12,      // 👉 ajuda a ficar mais “card”
-        padding: 16,           // 👉 espaço interno pro texto
+        borderRadius: 12,      
+        padding: 16,           
     },
     title: {
         color: '#3a2a67',
         fontWeight: '700',
-        // marginBottom: space.sm
         marginBottom: 8,
     },
     displayArea: {

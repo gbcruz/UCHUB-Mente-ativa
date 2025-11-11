@@ -112,17 +112,14 @@ const styles = StyleSheet.create({
 
 
     enunciadoOuter: {
-        backgroundColor: "rgba(255,255,255,0.15)",
+        backgroundColor: "#fff",
         borderRadius: 16,
         padding: 12,
         marginBottom: 14,
     },
     enunciadoInner: {
-        backgroundColor: "#f6e9ef",
+        backgroundColor: "#fff",
         borderRadius: 12,
         padding: 16,
-
-        shadowOpacity: 0.08,
-        elevation: 2,
     },
 });
