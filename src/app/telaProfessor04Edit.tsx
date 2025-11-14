@@ -43,7 +43,7 @@ export default function telaProfessor04Edit({ navigation, route }: any) {
             {/* Título */}
             <Text style={styles.titulo}>{conteudo}</Text>
 
-         
+
             {/* Lista de questões */}
             <ScrollView
                 style={styles.lista}
@@ -106,41 +106,24 @@ export default function telaProfessor04Edit({ navigation, route }: any) {
                 </TouchableOpacity>
             </View>
 
-            {/* Botões Criar e Editar */}
+            {/* Botão Criar Questão */}
             <View style={styles.footer}>
-                <GradientButton
-                    title="Criar Atv"
-                    width={"48%"}
-                    height={50}
-                    fontSize={14}
-                    gradientColor={["#0656E8", "#00A8FF"]}
-                    onPress={() =>
-                        navigation.navigate("telaProfessor05", {
-                            materia,
-                            ano,
-                            conteudo,
-                            novaQuestao: true,
-                        })
-                    }
-                />
-
-                <GradientButton
-                    title="Editar"
-                    width={"48%"}
-                    height={50}
-                    fontSize={14}
-                    gradientColor={["#0656E8", "#00A8FF"]}
-                    onPress={() =>
-                        navigation.navigate("telaProfessor05", {
-                            materia,
-                            ano,
-                            conteudo,
-                            editar: true,
-                        })
-                    }
-                />
+                <View style={styles.questaoContainer}>
+                    <GradientButton
+                        title="Criar Questão"
+                        // 👇 aqui é onde a mágica acontece: 
+                        // forçamos o TouchableOpacity a ocupar toda a largura do container
+                        style={styles.criarButton}
+                        onPress={() =>
+                            navigation.navigate("telaProfessor04", {
+                                materia,
+                                ano,
+                                editar: true,
+                            })
+                        }
+                    />
+                </View>
             </View>
-
         </LinearGradient>
     );
 }
@@ -180,12 +163,12 @@ const styles = StyleSheet.create({
     },
     footer: {
         width: "100%",
-        flexDirection: "row",
-        justifyContent: "space-between",
         alignItems: "center",
         marginTop: height * 0.02,
         marginBottom: height * 0.02,
-        gap: width * 0.03,
+    },
+    criarButton: {
+        alignSelf: "stretch", // faz o botão ocupar 100% da largura do questaoContainer
     },
     questaoItem: {
         width: "100%",

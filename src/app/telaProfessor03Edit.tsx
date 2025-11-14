@@ -95,10 +95,10 @@ export default function telaProfessor03Edit({ navigation, route }: any) {
                 </TouchableOpacity>
             </View>
 
-            {/* Botão Editar */}
+            {/* Botão Adicionar */}
             <View style={styles.footer}>
                 <GradientButton
-                    title="Editar"
+                    title="Adicionar"
                     width={"100%"}
                     height={50}
                     fontSize={14}
