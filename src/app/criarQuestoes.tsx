@@ -1,9 +1,8 @@
-import React, { useState } from "react";
-import { View, Text, ScrollView, SafeAreaView, StyleSheet, TouchableOpacity } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
-import { backgroundStyles, Gradient } from "@/styles/background";
-import GradientButton from "@/components/gradientButton";
 import CardEnunciado from "@/components/cards/cardEnunciado";
+import { backgroundStyles, Gradient } from "@/styles/background";
+import { Ionicons } from "@expo/vector-icons";
+import React, { useState } from "react";
+import { SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
 import CardAlternativas from "@/components/cards/cardAlternativas";
 
