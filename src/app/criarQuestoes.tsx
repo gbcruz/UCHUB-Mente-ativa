@@ -34,9 +34,9 @@ export default function CriarQuestoes() {
         const novaPergunta = {
             enunciado,
             alternativas: alternativasLimpa,
-            indiceCorreta: 0,     // por enquanto, assume que a primeira é a correta
+            // indiceCorreta: 0,     
             explicacao,
-            turma: 9,             // depois você pode puxar isso da conta do professor
+            // turma: 9,             // esperar API cadastro
             autorId: 1,
             dificuldade: "facil",
         };
