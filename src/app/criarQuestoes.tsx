@@ -4,10 +4,16 @@ import { Ionicons } from "@expo/vector-icons";
 import { backgroundStyles, Gradient } from "@/styles/background";
 import GradientButton from "@/components/gradientButton";
 import CardEnunciado from "@/components/cards/cardEnunciado";
+
 import CardAlternativas from "@/components/cards/cardAlternativas";
+
+const API_BASE_URL = "https://93e08048-d088-4dbc-bd60-18bab6374393-00-1lc06cy73r5o4.picard.replit.dev"
+
+
 export default function CriarQuestoes() {
     const [enunciado, setEnunciado] = useState("");
     const [alternativas, setAlternativas] = useState<string[]>(["", "", "", "", ""]);
+    const [explicacao, setExplicacao] = useState("");
 
     const handleChangeAlt = (index: number, value: string) => {
         const next = [...alternativas];
@@ -15,9 +21,50 @@ export default function CriarQuestoes() {
         setAlternativas(next);
     };
 
-    const handleSalvar = () => {
-        // Integrar com banco de dados
-        console.log({ enunciado, alternativas });
+    const handleSalvar = async () => {
+        // limpa espaços e ignora alternativas totalmente vazias
+        const alternativasLimpa = alternativas
+            .map((alt) => alt.trim())
+            .filter((alt) => alt !== "");
+
+        if (!enunciado.trim() || alternativasLimpa.length < 2) {
+            console.warn("Preencha o enunciado e pelo menos duas alternativas.");
+            return;
+        }
+
+        const novaPergunta = {
+            enunciado,
+            alternativas: alternativasLimpa,
+            indiceCorreta: 0,     // por enquanto, assume que a primeira é a correta
+            explicacao,
+            turma: 9,             // depois você pode puxar isso da conta do professor
+            autorId: 1,
+            dificuldade: "facil",
+        };
+
+        try {
+            const response = await fetch(`${API_BASE_URL}/perguntas`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify(novaPergunta),
+            });
+
+            if (!response.ok) {
+                throw new Error(`Erro ao salvar: ${response.status}`);
+            }
+
+            const data = await response.json();
+            console.log("Pergunta salva com sucesso:", data);
+
+            // limpar o formulário depois de salvar
+            setEnunciado("");
+            setAlternativas(["", "", "", "", ""]);
+            setExplicacao("");
+        } catch (error) {
+            console.error("Erro ao salvar pergunta:", error);
+        }
     };
 
     return (
@@ -59,10 +106,13 @@ export default function CriarQuestoes() {
                             onChangeText={(v) => handleChangeAlt(idx, v)}
                         />
                     ))}
-
-                    {/* Botão de explicação */}
-                    <View style={{ marginTop: 12, marginBottom: 12 }}>
-                        <GradientButton title="Explicação" onPress={() => console.log("explicação")} />
+                    {/* Card de explicação */}
+                    <View style={styles.enunciadoOuter}>
+                        <CardEnunciado
+                            title="Explicação"
+                            value={explicacao}
+                            onChangeText={setExplicacao}
+                        />
                     </View>
                 </ScrollView>
             </SafeAreaView>
