@@ -37,7 +37,7 @@ export default function CriarQuestoes() {
             // indiceCorreta: 0,     
             explicacao,
             // turma: 9,             // esperar API cadastro
-            autorId: 1,
+            // autorId: 1,         // talvez não precise
             dificuldade: "facil",
         };
 
