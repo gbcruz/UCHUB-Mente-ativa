@@ -3,8 +3,10 @@ import { InputText } from "@/components/inputText";
 import { backgroundStyles, Gradient } from "@/styles/background";
 import { globalStyles } from "@/styles/global";
 import React, { useState } from "react";
-import { SafeAreaView, StyleSheet, Text, useWindowDimensions, View } from "react-native";
+import { Alert, SafeAreaView, StyleSheet, Text, useWindowDimensions, View } from "react-native";
 import { SelectList } from "react-native-dropdown-select-list";
+
+const API_BASE_URL = "https://93e08048-d088-4dbc-bd60-18bab6374393-00-1lc06cy73r5o4.picard.replit.dev";
 
 export default function CadastroAluno() {
     const { height } = useWindowDimensions();
@@ -20,10 +22,60 @@ export default function CadastroAluno() {
     const turmaOptions = Array.from({ length: 9 }, (_, i) => ({ key: String(i + 1), value: String(i + 1) }));
     turmaOptions.push({ key: "outros", value: "Outros" });
 
-    function handleSubmit() {
+    async function handleSubmit() {
         const turmaFinal = turma === "outros" ? outroTurma : turma;
-        console.log({ nome, email, senha, turma: turmaFinal });
-        // TODO: enviar dados / navegar
+        const emailLimpo = email.trim();
+
+        if (!nome.trim() || !emailLimpo || !senha.trim() || !turmaFinal.trim()) {
+            Alert.alert("Atenção", "Preencha todos os campos corretamente.");
+            return;
+        }
+
+        try {
+            const [resProfessores, resAlunos] = await Promise.all([
+                fetch(`${API_BASE_URL}/professores?email=${emailLimpo}`),
+                fetch(`${API_BASE_URL}/alunos?email=${emailLimpo}`)
+            ]);
+
+            const existeProfessor = await resProfessores.json();
+            const existeAluno = await resAlunos.json();
+
+            if (existeProfessor.length > 0 || existeAluno.length > 0) {
+                Alert.alert("Erro", "Este email já está em uso (por um Professor ou Aluno).");
+                return;
+            }
+
+            const novoAluno = {
+                nome: nome.trim(),
+                email: emailLimpo,
+                senha: senha,
+                turma: turmaFinal.trim(),
+            };
+
+            const response = await fetch(`${API_BASE_URL}/alunos`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(novoAluno),
+            });
+
+            if (!response.ok) {
+                throw new Error(`Erro ao cadastrar aluno: ${response.status}`);
+            }
+
+            const data = await response.json();
+            console.log("Aluno cadastrado:", data);
+            Alert.alert("Sucesso", "Aluno cadastrado com sucesso!");
+
+            setNome("");
+            setEmail("");
+            setSenha("");
+            setTurma("");
+            setOutroTurma("");
+            
+        } catch (error) {
+            console.error("Erro no cadastro de aluno:", error);
+            Alert.alert("Erro", "Falha ao conectar com o servidor.");
+        }
     }
 
     return (

@@ -6,12 +6,11 @@ import { globalStyles } from "@/styles/global";
 import { ROUTES } from "@/utils/routes";
 import { router } from "expo-router";
 import React, { useState } from "react";
-import { StyleSheet, Text, useWindowDimensions, View } from "react-native";
+import { ActivityIndicator, Alert, StyleSheet, Text, useWindowDimensions, View } from "react-native";
 
+const API_URL = "https://93e08048-d088-4dbc-bd60-18bab6374393-00-1lc06cy73r5o4.picard.replit.dev"; 
 
 export default function Index() {
-    // Função do react native para pegar as dimensões da tela, faço calculos
-    // pra deixar o layout responsivo
     const { width, height } = useWindowDimensions();
 
     const titleFontSize = Math.max(28, Math.min(64, width * 0.12));
@@ -34,6 +33,41 @@ export default function Index() {
         router.navigate(ROUTES.CADASTRO_PROFESSOR);
     }
 
+    async function handleLogin() {
+        if (!email.trim() || !senha.trim()) {
+            Alert.alert("Atenção", "Por favor, preencha email e senha.");
+            return;
+        }
+
+        setIsLoading(true);
+
+        try {
+            const responseAluno = await fetch(`${API_URL}/alunos?email=${email}&senha=${senha}`);
+            const alunosEncontrados = await responseAluno.json();
+
+            if (alunosEncontrados.length > 0) {
+                router.replace(ROUTES.MATERIAS_ALUNO || "/telaMaterias"); 
+                return;
+            }
+
+            const responseProf = await fetch(`${API_URL}/professores?email=${email}&senha=${senha}`);
+            const profsEncontrados = await responseProf.json();
+
+            if (profsEncontrados.length > 0) {
+                router.replace(ROUTES.TELA_PROFESSOR01 || "/telaProfessor01");
+                return;
+            }
+
+            Alert.alert("Erro de acesso", "Email ou senha incorretos.");
+
+        } catch (error) {
+            console.error(error);
+            Alert.alert("Erro", "Não foi possível conectar ao servidor. Verifique sua internet ou se o Replit está rodando.");
+        } finally {
+            setIsLoading(false);
+        }
+    }
+
     return (
         <View style={backgroundStyles.container}>
             <Gradient/>
@@ -47,31 +81,48 @@ export default function Index() {
                 <View style={styles.bottom}>
                     <Text style={globalStyles.whiteText}>Login:</Text>
                     <View style={styles.inputWrap}>
-                        <InputText placeholder="Digite seu login" placeholderTextColor="#999"/>
+                        <InputText 
+                            placeholder="Digite seu login" 
+                            placeholderTextColor="#999"
+                            value={email}
+                            onChangeText={setEmail}
+                            autoCapitalize="none"
+                            keyboardType="email-address"
+                        />
                     </View>
 
                     <Text style={globalStyles.whiteText}>Senha:</Text>
                     <View style={styles.inputWrap}>
-                        <InputText placeholder="Digite sua senha" placeholderTextColor="#999" secureTextEntry/>
+                        <InputText 
+                            placeholder="Digite sua senha" 
+                            placeholderTextColor="#999" 
+                            secureTextEntry
+                            value={senha}
+                            onChangeText={setSenha}
+                        />
                     </View>
 
                     <View style={styles.buttonWrap}>
-                        <GradientButton title="Entrar"/>
+                        {isLoading ? (
+                            <ActivityIndicator size="large" color="#29c4e1" />
+                        ) : (
+                            <GradientButton title="Entrar" onPress={handleLogin}/>
+                        )}
                     </View>
 
                     <Text 
-                style={styles.createAccount}
-                onPress={() => setIsPopUpVisible(true)}
-            >
-                Criar Conta
-            </Text>
+                        style={styles.createAccount}
+                        onPress={() => setIsPopUpVisible(true)}
+                    >
+                        Criar Conta
+                    </Text>
 
-            <CreateAccountPopUp 
-                visible={isPopUpVisible}
-                onClose={() => setIsPopUpVisible(false)}
-                onSelectStudent={handleStudentSelection}
-                onSelectTeacher={handleTeacherSelection}
-            />
+                    <CreateAccountPopUp 
+                        visible={isPopUpVisible}
+                        onClose={() => setIsPopUpVisible(false)}
+                        onSelectStudent={handleStudentSelection}
+                        onSelectTeacher={handleTeacherSelection}
+                    />
                 </View>
             </View>
         </View>
@@ -106,6 +157,7 @@ const styles = StyleSheet.create({
     },
     buttonWrap: {
         width: '86%',
+        marginTop: 10, // Pequeno espaçamento extra
     },
     createAccount: {
         color: '#ffffff',

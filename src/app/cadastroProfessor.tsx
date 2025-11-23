@@ -2,9 +2,11 @@ import { GradientButton } from "@/components/gradientButton";
 import { InputText } from "@/components/inputText";
 import { backgroundStyles, Gradient } from "@/styles/background";
 import { globalStyles } from "@/styles/global";
-import React, { useState } from "react";
-import { SafeAreaView, StyleSheet, Text, View } from "react-native";
-import { SelectList } from "react-native-dropdown-select-list";
+import React, { useEffect, useState } from "react"; // Adicionado useEffect
+import { Alert, SafeAreaView, StyleSheet, Text, View } from "react-native";
+import { MultipleSelectList } from "react-native-dropdown-select-list";
+
+const API_BASE_URL = "https://93e08048-d088-4dbc-bd60-18bab6374393-00-1lc06cy73r5o4.picard.replit.dev";
 
 export default function CadastroProfessor() {
     const [nome, setNome] = useState("");
@@ -13,32 +15,130 @@ export default function CadastroProfessor() {
 
     const turmaOptions = Array.from({ length: 9 }, (_, i) => ({ key: String(i + 1), value: String(i + 1) }));
     turmaOptions.push({ key: "outros", value: "Outros" });
-    const [selectedTurmas, setSelectedTurmas] = useState<string[] | string>(""); 
-
+    const [selectedTurmas, setSelectedTurmas] = useState<string[]>([]); 
     const [outroTurma, setOutroTurma] = useState("");
 
     const [materiasList, setMateriasList] = useState<{ key: string; value: string }[]>([]);
     const [materiaInput, setMateriaInput] = useState("");
-    const [selectedMaterias, setSelectedMaterias] = useState<string[] | string>("");
+    const [selectedMaterias, setSelectedMaterias] = useState<string[]>([]);
 
-    function addMateria() {
-        const v = materiaInput.trim();
-        if (!v) return;
-        const key = v;
-        if (!materiasList.find(m => m.key === key)) {
-            setMateriasList(prev => [{ key, value: v }, ...prev]);
+    useEffect(() => {
+        fetchMaterias();
+    }, []);
+
+    async function fetchMaterias() {
+        try {
+            const response = await fetch(`${API_BASE_URL}/materias`);
+            if (!response.ok) throw new Error("Falha ao buscar matérias");
+            
+            const data = await response.json();
+            const formatted = data.map((item: { id: number; nome: string }) => ({
+                key: String(item.id), 
+                value: item.nome
+            }));
+            setMateriasList(formatted);
+        } catch (error) {
+            console.error("Erro ao carregar matérias:", error);
         }
-        setMateriaInput("");
+    }
+    async function addMateria() {
+        const nomeMateria = materiaInput.trim();
+        if (!nomeMateria) return;
+
+        const existe = materiasList.find(m => m.value.toLowerCase() === nomeMateria.toLowerCase());
+        if (existe) {
+            Alert.alert("Atenção", "Esta matéria já está na lista.");
+            return;
+        }
+
+        try {
+            const response = await fetch(`${API_BASE_URL}/materias`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ nome: nomeMateria }), 
+            });
+
+            if (!response.ok) throw new Error("Erro ao salvar matéria");
+
+            const novaMateriaServer = await response.json();
+            
+            setMateriasList(prev => [
+                ...prev, 
+                { key: String(novaMateriaServer.id), value: novaMateriaServer.nome }
+            ]);
+            
+            setMateriaInput(""); 
+            Alert.alert("Sucesso", "Matéria adicionada com sucesso!");
+
+        } catch (error) {
+            console.error("Erro ao adicionar matéria:", error);
+            Alert.alert("Erro", "Não foi possível adicionar a matéria.");
+        }
     }
 
-    function handleSubmit() {
-        const turmasFinal = Array.isArray(selectedTurmas)
-            ? selectedTurmas.includes("outros") ? [...selectedTurmas.filter(t => t !== "outros"), outroTurma] : selectedTurmas
-            : selectedTurmas === "outros" ? [outroTurma] : [selectedTurmas];
+    async function handleSubmit() {
+        let turmasFinal = [...selectedTurmas];
 
-        const materiasFinal = Array.isArray(selectedMaterias) ? selectedMaterias : selectedMaterias ? [selectedMaterias] : [];
-        console.log({ nome, email, senha, turmas: turmasFinal, materias: materiasFinal });
-        // TODO: enviar dados / navegar
+        if (turmasFinal.includes("outros")) {
+            turmasFinal = turmasFinal.filter(t => t !== "outros");
+            if (outroTurma.trim()) {
+                turmasFinal.push(outroTurma.trim());
+            }
+        }
+
+        const materiasFinal = selectedMaterias;
+        const emailLimpo = email.trim();
+        if (!nome.trim() || !emailLimpo || !senha.trim() || !turmasFinal.length) {
+            Alert.alert("Erro", "Preencha nome, email, senha e ao menos uma turma.");
+            return;
+        }
+
+        try {
+            const [resProfessores, resAlunos] = await Promise.all([
+                fetch(`${API_BASE_URL}/professores?email=${emailLimpo}`),
+                fetch(`${API_BASE_URL}/alunos?email=${emailLimpo}`)
+            ]);
+
+            const existeProfessor = await resProfessores.json();
+            const existeAluno = await resAlunos.json();
+
+            if (existeProfessor.length > 0 || existeAluno.length > 0) {
+                Alert.alert("Erro", "Este email já está cadastrado (como Professor ou Aluno).");
+                return; 
+            }
+            const novoProfessor = {
+                nome: nome.trim(),
+                email: emailLimpo,
+                senha: senha, 
+                turmas: turmasFinal,
+                materias: materiasFinal, 
+            };
+
+            const response = await fetch(`${API_BASE_URL}/professores`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(novoProfessor),
+            });
+
+            if (!response.ok) {
+                throw new Error(`Erro ao cadastrar professor: ${response.status}`);
+            }
+
+            const data = await response.json();
+            console.log("Professor cadastrado:", data);
+            Alert.alert("Sucesso", "Professor cadastrado com sucesso!");
+
+            setNome("");
+            setEmail("");
+            setSenha("");
+            setSelectedTurmas([]);
+            setOutroTurma("");
+            setSelectedMaterias([]);
+
+        } catch (error) {
+            console.error("Erro no cadastro de professor:", error);
+            Alert.alert("Erro", "Falha ao cadastrar professor ou verificar email.");
+        }
     }
 
     return (
@@ -64,23 +164,25 @@ export default function CadastroProfessor() {
                     </View>
 
                     <View style={styles.field}>
-                        <Text style={globalStyles.whiteText}>Turmas (selecione todas que leciona)</Text>
-                        <SelectList
-                            setSelected={setSelectedTurmas as any}
+                        <Text style={globalStyles.whiteText}>Turmas</Text>
+                        <MultipleSelectList
+                            setSelected={(val: any) => setSelectedTurmas(val)}
                             data={turmaOptions}
                             save="key"
-                            multiple={true}
+                            label="Turmas"
                             search={false}
                             boxStyles={styles.dropdownBox}
                             dropdownStyles={styles.dropdown}
                             inputStyles={styles.dropdownInput}
                             dropdownTextStyles={styles.dropdownText}
-                            searchStyles={styles.searchStyles}
                             placeholder="Selecione turmas"
+                            badgeTextStyles={{ color: 'white' } as any}
+                            badgeStyles={{ backgroundColor: 'rgba(255,255,255,0.2)' }}
+                            checkBoxStyles={{ borderColor: 'white' }}
                         />
                     </View>
 
-                    {Array.isArray(selectedTurmas) && selectedTurmas.includes("outros") && (
+                    {selectedTurmas.includes("outros") && (
                         <View style={styles.field}>
                             <Text style={globalStyles.whiteText}>Especificar turma(s)</Text>
                             <InputText placeholder="Ex: 1,2,3,4 ..." value={outroTurma} onChangeText={setOutroTurma} />
@@ -89,34 +191,37 @@ export default function CadastroProfessor() {
 
                     <View style={styles.field}>
                         <Text style={globalStyles.whiteText}>Matérias</Text>
-                        <Text style={styles.smallNote}>Adicione as matérias se já não existirem.</Text>
+                        <Text style={styles.smallNote}>Selecione as matérias disponíveis ou cadastre novas.</Text>
 
-                        <SelectList
-                            setSelected={setSelectedMaterias as any}
-                            data={materiasList.length ? materiasList : [{ key: "nenhuma", value: "Nenhuma matéria (adicione abaixo)" }]}
-                            save="key"
-                            multiple={true}
+                        <MultipleSelectList
+                            setSelected={(val: any) => setSelectedMaterias(val)}
+                            data={materiasList}
+                            save="value" 
+                            label="Matérias"
                             search={false}
                             boxStyles={styles.dropdownBox}
                             dropdownStyles={styles.dropdown}
                             inputStyles={styles.dropdownInput}
                             dropdownTextStyles={styles.dropdownText}
-                            searchStyles={styles.searchStyles}
-                            placeholder="Selecione matérias"
+                            placeholder={materiasList.length ? "Selecione matérias" : "Carregando matérias..."}
+                            badgeTextStyles={{ color: 'white' } as any}
+                            badgeStyles={{ backgroundColor: 'rgba(255,255,255,0.2)' }}
+                            checkBoxStyles={{ borderColor: 'white' }} 
+                            notFoundText="Nenhuma matéria encontrada"
                         />
                     </View>
 
                     <View style={styles.field}>
-                        <Text style={globalStyles.whiteText}>Adicionar matéria</Text>
-                        <InputText placeholder="Ex: Matemática" value={materiaInput} onChangeText={setMateriaInput} />
+                        <Text style={globalStyles.whiteText}>Nova Matéria</Text>
+                        <InputText placeholder="Ex: Geografia" value={materiaInput} onChangeText={setMateriaInput} />
                         <View style={styles.addButton}>
-                            <GradientButton title="Adicionar" onPress={addMateria} />
+                            <GradientButton title="Salvar Nova Matéria" onPress={addMateria} />
                         </View>
                     </View>
                 </View>
 
                 <View style={styles.footer}>
-                    <GradientButton title="Cadastrar" onPress={handleSubmit} />
+                    <GradientButton title="Cadastrar Professor" onPress={handleSubmit} />
                 </View>
             </SafeAreaView>
         </View>
@@ -154,8 +259,10 @@ const styles = StyleSheet.create({
         marginBottom: 8,
     },
     dropdown: {
-        backgroundColor: "rgba(0,0,0,0.6)",
+        backgroundColor: "rgba(0,0,0,0.8)",
         borderRadius: 8,
+        borderColor: "rgba(255,255,255,0.1)",
+        borderWidth: 1,
     },
     dropdownInput: {
         color: "#ffffff",
@@ -164,10 +271,6 @@ const styles = StyleSheet.create({
     },
     dropdownText: {
         color: "#ffffff",
-    },
-    searchStyles: {
-        color: "#ffffff",
-        backgroundColor: "rgba(255,255,255,0.04)",
     },
     smallNote: {
         color: "#ddd",
