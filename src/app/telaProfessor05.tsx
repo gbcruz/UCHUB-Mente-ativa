@@ -75,7 +75,6 @@ async function deleteQuestion(id: number): Promise<void> {
   }
 }
 
-/* ---------------------- COMPONENTE DA TELA ---------------------- */
 
 export default function TelaProfessor05() {
   // BUSCA

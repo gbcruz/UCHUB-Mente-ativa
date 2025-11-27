@@ -98,9 +98,9 @@ export default function CriarQuestoes({ navigation, route }: any) {
                     <Text style={styles.screenTitle}>Criar Questões</Text>
 
 
-                    <Text style={{ color: "#fff", textAlign: "center", marginVertical: 8 }}>
+                    {/*<Text style={{ color: "#fff", textAlign: "center", marginVertical: 8 }}>
                         Turma: {turmaSelecionada} ••• Matéria: {materiaSelecionada}
-                    </Text>
+                    </Text>*/}
 
                     {/* TÍTULO */}
                     <Text style={styles.enunciadoLabel}>Enunciado da questão</Text>
