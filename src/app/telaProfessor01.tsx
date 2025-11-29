@@ -2,6 +2,7 @@ import CardAlternativas from "@/components/cards/cardAlternativas";
 import { API_KEY } from "@/utils/apiKey";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
@@ -22,9 +23,14 @@ interface Materia {
   nome: string;
 }
 
-export default function TelaProfessor01({ navigation }: any) {
+export default function TelaProfessor01() {
+  const router = useRouter();
+  const params = useLocalSearchParams();
+  
   const [materias, setMaterias] = useState<Materia[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+
+  const usuario = params.usuario ? JSON.parse(params.usuario as string) : null;
 
   useEffect(() => {
     fetchMaterias();
@@ -34,7 +40,16 @@ export default function TelaProfessor01({ navigation }: any) {
     try {
       const response = await fetch(`${API_URL}/materias`);
       const data = await response.json();
-      setMaterias(data);
+      
+      if (usuario && usuario.materiaIds) {
+        const materiasFiltradas = data.filter((m: Materia) => 
+          usuario.materiaIds.includes(m.id)
+        );
+        setMaterias(materiasFiltradas);
+      } else {
+        setMaterias(data);
+      }
+
     } catch (error) {
       console.error(error);
       Alert.alert("Erro", "Não foi possível carregar as matérias.");
@@ -48,14 +63,14 @@ export default function TelaProfessor01({ navigation }: any) {
       {/* Ícones topo */}
       <View style={styles.header}>
         <TouchableOpacity
-          onPress={() => navigation.goBack()}
+          onPress={() => router.back()}
           style={styles.iconCircle}
         >
           <Ionicons name="chevron-back" size={20} color="#fff" />
         </TouchableOpacity>
 
         <TouchableOpacity
-          onPress={() => navigation.navigate("telaProfessor01")}
+          onPress={() => router.push("/telaProfessor01")}
           style={styles.iconCircle}
         >
           <Ionicons name="home" size={20} color="#fff" />
@@ -78,7 +93,16 @@ export default function TelaProfessor01({ navigation }: any) {
             <TouchableOpacity
               key={materia.id}
               style={{ width: "100%" }}
-              onPress={() => {}}
+              onPress={() => 
+                router.push({
+                  pathname: "/telaProfessor02",
+                  params: {
+                    materiaId: materia.id,
+                    materiaNome: materia.nome,
+                    usuario: params.usuario as string
+                  }
+                })
+              }
             >
               <View style={styles.wrapperAlternativa}>
                 <CardAlternativas

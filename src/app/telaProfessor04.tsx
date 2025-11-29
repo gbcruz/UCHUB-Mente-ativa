@@ -3,6 +3,7 @@ import GradientButton from "@/components/gradientButton";
 import { API_KEY } from "@/utils/apiKey";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
@@ -21,23 +22,32 @@ const API_URL = API_KEY;
 interface Pergunta {
   id: number;
   enunciado: string;
+  materiaId: number;
+  turmaId: number;
 }
 
-export default function telaProfessor04({ navigation, route }: any) {
-  const materia = route?.params?.materia || "Matéria";
-  const ano = route?.params?.ano || "Ano";
-  const conteudo = route?.params?.conteudo || "Conteúdo";
+export default function telaProfessor04() {
+  const router = useRouter();
+  const params = useLocalSearchParams();
+
+  const materiaId = params.materiaId;
+  const turmaId = params.turmaId;
+  const materiaNome = params.materiaNome || "Matéria";
+  const turmaNome = params.turmaNome || "Turma";
 
   const [perguntas, setPerguntas] = useState<Pergunta[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    fetchPerguntas();
-  }, []);
+    if (materiaId && turmaId) {
+      fetchPerguntas();
+    }
+  }, [materiaId, turmaId]);
 
   async function fetchPerguntas() {
     try {
-      const response = await fetch(`${API_URL}/perguntas`);
+      // Filtrando diretamente na URL se o JSON Server suportar, ou filtrando no front
+      const response = await fetch(`${API_URL}/perguntas?materiaId=${materiaId}&turmaId=${turmaId}`);
       const data = await response.json();
       setPerguntas(data);
     } catch (error) {
@@ -53,14 +63,14 @@ export default function telaProfessor04({ navigation, route }: any) {
       {/* Ícones topo */}
       <View style={styles.header}>
         <TouchableOpacity
-          onPress={() => navigation.goBack()}
+          onPress={() => router.back()}
           style={styles.iconCircle}        // ⬅ círculo no voltar
         >
           <Ionicons name="chevron-back" size={20} color="#fff" />
         </TouchableOpacity>
 
         <TouchableOpacity
-          onPress={() => navigation.navigate("telaProfessor01")}
+          onPress={() => router.push("/telaProfessor01")}
           style={styles.iconCircle}        // ⬅ círculo na casinha
         >
           <Ionicons name="home" size={20} color="#fff" />
@@ -103,18 +113,10 @@ export default function telaProfessor04({ navigation, route }: any) {
         <View style={{ width: "100%" }}>
           <GradientButton
             title="Criar"
-            width={"100%"}    // ⬅ botão agora ocupa toda a largura
+            width={"100%"}    // ⬅ botãa ocupa toda a largura
             height={60}       // ⬅ ajuste para parecido com os cards
             fontSize={18}
             gradientColor={["#0656E8", "#00A8FF"]}
-            onPress={() =>
-              navigation.navigate("telaProfessor05", {
-                materia,
-                ano,
-                conteudo,
-                editar: true,
-              })
-            }
           />
         </View>
       </View>
