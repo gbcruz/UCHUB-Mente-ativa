@@ -3,13 +3,16 @@ import { InputText } from "@/components/inputText";
 import { backgroundStyles, Gradient } from "@/styles/background";
 import { globalStyles } from "@/styles/global";
 import { API_KEY } from "@/utils/apiKey";
+import { Ionicons } from "@expo/vector-icons";
+import { useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
-import { Alert, SafeAreaView, StyleSheet, Text, useWindowDimensions, View } from "react-native";
+import { Alert, SafeAreaView, StyleSheet, Text, TouchableOpacity, useWindowDimensions, View } from "react-native";
 import { SelectList } from "react-native-dropdown-select-list";
 
 const API_BASE_URL = API_KEY;
 
 export default function CadastroAluno() {
+    const router = useRouter();
     const { height } = useWindowDimensions();
     const topPadding = Math.max(24, height * 0.06);
     const contentPaddingBottom = Math.max(24, height * 0.05);
@@ -99,6 +102,14 @@ export default function CadastroAluno() {
             <Gradient />
             <SafeAreaView style={[styles.inner, { paddingTop: topPadding, paddingBottom: contentPaddingBottom }]}>
                 <View style={styles.content}>
+                    <View style={styles.header}>
+                        <TouchableOpacity
+                            onPress={() => router.back()}
+                            style={styles.iconCircle}
+                        >
+                            <Ionicons name="chevron-back" size={20} color="#fff" />
+                        </TouchableOpacity>
+                    </View>
                     <Text style={styles.title}>Cadastro Aluno</Text>
 
                     <View style={styles.field}>
@@ -190,5 +201,19 @@ const styles = StyleSheet.create({
     },
     field: {
         marginBottom: 14,
+    },
+    header: {
+        width: "100%",
+        flexDirection: "row",
+        justifyContent: "flex-start",
+        marginBottom: 10,
+    },
+    iconCircle: {
+        width: 40,
+        height: 40,
+        borderRadius: 40,
+        backgroundColor: "rgba(255,255,255,0.20)",
+        justifyContent: "center",
+        alignItems: "center",
     },
 });

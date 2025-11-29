@@ -3,13 +3,16 @@ import { InputText } from "@/components/inputText";
 import { backgroundStyles, Gradient } from "@/styles/background";
 import { globalStyles } from "@/styles/global";
 import { API_KEY } from "@/utils/apiKey";
+import { Ionicons } from "@expo/vector-icons";
+import { useRouter } from "expo-router";
 import React, { useEffect, useState } from "react"; // Adicionado useEffect
-import { Alert, SafeAreaView, StyleSheet, Text, View } from "react-native";
+import { Alert, SafeAreaView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { MultipleSelectList } from "react-native-dropdown-select-list";
 
 const API_BASE_URL = API_KEY;
 
 export default function CadastroProfessor() {
+    const router = useRouter();
     const [nome, setNome] = useState("");
     const [email, setEmail] = useState("");
     const [senha, setSenha] = useState("");
@@ -151,6 +154,14 @@ export default function CadastroProfessor() {
             <Gradient />
             <SafeAreaView style={styles.container}>
                 <View style={styles.content}>
+                    <View style={styles.header}>
+                        <TouchableOpacity
+                            onPress={() => router.back()}
+                            style={styles.iconCircle}
+                        >
+                            <Ionicons name="chevron-back" size={20} color="#fff" />
+                        </TouchableOpacity>
+                    </View>
                     <Text style={styles.title}>Cadastro Professor</Text>
 
                     <View style={styles.field}>
@@ -282,5 +293,19 @@ const styles = StyleSheet.create({
     },
     field: {
         marginBottom: 14,
+    },
+    header: {
+        width: "100%",
+        flexDirection: "row",
+        justifyContent: "flex-start",
+        marginBottom: 10,
+    },
+    iconCircle: {
+        width: 40,
+        height: 40,
+        borderRadius: 40,
+        backgroundColor: "rgba(255,255,255,0.20)",
+        justifyContent: "center",
+        alignItems: "center",
     },
 });
