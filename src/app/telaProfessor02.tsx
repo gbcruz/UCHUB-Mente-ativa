@@ -1,8 +1,12 @@
-import { Ionicons } from "@expo/vector-icons";
 import CardAlternativas from "@/components/cards/cardAlternativas";
+import { API_KEY } from "@/utils/apiKey";
+import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
-import React from "react";
+import { useLocalSearchParams, useRouter } from "expo-router";
+import React, { useEffect, useState } from "react";
 import {
+  ActivityIndicator,
+  Alert,
   Dimensions,
   ScrollView,
   StyleSheet,
@@ -12,26 +16,62 @@ import {
 } from "react-native";
 
 const { width, height } = Dimensions.get("window");
+const API_URL = API_KEY;
 
-export default function telaProfessor02({ navigation, route }: any) {
+interface Turma {
+  id: number;
+  turma: string;
+}
+
+export default function telaProfessor02() {
+  const router = useRouter();
+  const params = useLocalSearchParams();
   
-  const materia = route?.params?.materia || "Ano";
+  const materiaId = params.materiaId;
+  const materiaNome = params.materiaNome || "Matéria";
+  const usuario = params.usuario ? JSON.parse(params.usuario as string) : null;
 
-  const anos = ["6º ano", "7º ano", "8º ano", "9º ano", "1º ano EM"];
+  const [turmas, setTurmas] = useState<Turma[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    fetchTurmas();
+  }, []);
+
+  async function fetchTurmas() {
+    try {
+      const response = await fetch(`${API_URL}/turmas`);
+      const data = await response.json();
+
+      if (usuario && usuario.turmaIds) {
+        const turmasFiltradas = data.filter((t: Turma) => 
+          usuario.turmaIds.includes(t.id)
+        );
+        setTurmas(turmasFiltradas);
+      } else {
+        setTurmas(data);
+      }
+    } catch (error) {
+      console.error(error);
+      Alert.alert("Erro", "Não foi possível carregar as turmas.");
+    } finally {
+      setIsLoading(false);
+    }
+  }
 
   return (
     <LinearGradient colors={["#111b84", "#3c0e71"]} style={styles.container}>
       {/* Ícones topo */}
       <View style={styles.header}>
         <TouchableOpacity
-          onPress={() => navigation.goBack()}
+          onPress={() => router.back()}
           style={styles.iconCircle}
         >
           <Ionicons name="chevron-back" size={20} color="#fff" />
         </TouchableOpacity>
 
         <TouchableOpacity
-          onPress={() => navigation.navigate("telaProfessor01")}
+          onPress={() => router.push("/telaProfessor01")}
           style={styles.iconCircle}
         >
           <Ionicons name="home" size={20} color="#fff" />
@@ -47,28 +87,38 @@ export default function telaProfessor02({ navigation, route }: any) {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.listaContent}
       >
-        {anos.map((ano, index) => (   // ⬅️ AGORA USA O VETOR CERTO
-          <TouchableOpacity
-            key={index}
-            style={{ width: "100%" }}
-            onPress={() =>
-              navigation.navigate("telaProfessor03", {
-                materia,
-                ano
-              })
-            }
-          >
-            <View style={styles.wrapperAlternativa}>
-              <CardAlternativas
-                label={`${ano}`}
-                showInput={false}
-                showMarkCorrect={false}
-                containerStyle={styles.cardLista}
-                labelStyle={styles.cardTexto}
-              />
-            </View>
-          </TouchableOpacity>
-        ))}
+        {isLoading ? (
+          <ActivityIndicator size="large" color="#fff" style={{ marginTop: 20 }} />
+        ) : (
+          turmas.map((turma) => (
+            <TouchableOpacity
+              key={turma.id}
+              style={{ width: "100%" }}
+              onPress={() => 
+                router.push({
+                  pathname: "/telaProfessor04",
+                  params: {
+                    materiaId,
+                    materiaNome,
+                    turmaId: turma.id,
+                    turmaNome: turma.turma,
+                    usuario: params.usuario as string
+                  }
+                })
+              }
+            >
+              <View style={styles.wrapperAlternativa}>
+                <CardAlternativas
+                  label={turma.turma}
+                  showInput={false}
+                  showMarkCorrect={false}
+                  containerStyle={styles.cardLista}
+                  labelStyle={styles.cardTexto}
+                />
+              </View>
+            </TouchableOpacity>
+          ))
+        )}
       </ScrollView>
     </LinearGradient>
   );

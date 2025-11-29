@@ -47,7 +47,10 @@ export default function Index() {
             const alunosEncontrados = await responseAluno.json();
 
             if (alunosEncontrados.length > 0) {
-                router.replace(ROUTES.MATERIAS_ALUNO || "/telaMaterias"); 
+                router.replace({
+                    pathname: ROUTES.MATERIAS_ALUNO || "/telaMaterias",
+                    params: { usuario: JSON.stringify(alunosEncontrados[0]) }
+                }); 
                 return;
             }
 
@@ -55,7 +58,10 @@ export default function Index() {
             const profsEncontrados = await responseProf.json();
 
             if (profsEncontrados.length > 0) {
-                router.replace(ROUTES.TELA_PROFESSOR01 || "/telaProfessor01");
+                router.replace({
+                    pathname: ROUTES.TELA_PROFESSOR01 || "/telaProfessor01",
+                    params: { usuario: JSON.stringify(profsEncontrados[0]) }
+                });
                 return;
             }
 

@@ -3,21 +3,22 @@ import { InputText } from "@/components/inputText";
 import { backgroundStyles, Gradient } from "@/styles/background";
 import { globalStyles } from "@/styles/global";
 import { API_KEY } from "@/utils/apiKey";
+import { Ionicons } from "@expo/vector-icons";
+import { useRouter } from "expo-router";
 import React, { useEffect, useState } from "react"; // Adicionado useEffect
-import { Alert, SafeAreaView, StyleSheet, Text, View } from "react-native";
+import { Alert, SafeAreaView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { MultipleSelectList } from "react-native-dropdown-select-list";
 
 const API_BASE_URL = API_KEY;
 
 export default function CadastroProfessor() {
+    const router = useRouter();
     const [nome, setNome] = useState("");
     const [email, setEmail] = useState("");
     const [senha, setSenha] = useState("");
 
-    const turmaOptions = Array.from({ length: 9 }, (_, i) => ({ key: String(i + 1), value: String(i + 1) }));
-    turmaOptions.push({ key: "outros", value: "Outros" });
+    const [turmasList, setTurmasList] = useState<{ key: string; value: string }[]>([]);
     const [selectedTurmas, setSelectedTurmas] = useState<string[]>([]); 
-    const [outroTurma, setOutroTurma] = useState("");
 
     const [materiasList, setMateriasList] = useState<{ key: string; value: string }[]>([]);
     const [materiaInput, setMateriaInput] = useState("");
@@ -25,7 +26,24 @@ export default function CadastroProfessor() {
 
     useEffect(() => {
         fetchMaterias();
+        fetchTurmas();
     }, []);
+
+    async function fetchTurmas() {
+        try {
+            const response = await fetch(`${API_BASE_URL}/turmas`);
+            if (!response.ok) throw new Error("Falha ao buscar turmas");
+            
+            const data = await response.json();
+            const formatted = data.map((item: { id: number; turma: string }) => ({
+                key: String(item.id), 
+                value: item.turma
+            }));
+            setTurmasList(formatted);
+        } catch (error) {
+            console.error("Erro ao carregar turmas:", error);
+        }
+    }
 
     async function fetchMaterias() {
         try {
@@ -78,18 +96,8 @@ export default function CadastroProfessor() {
     }
 
     async function handleSubmit() {
-        let turmasFinal = [...selectedTurmas];
-
-        if (turmasFinal.includes("outros")) {
-            turmasFinal = turmasFinal.filter(t => t !== "outros");
-            if (outroTurma.trim()) {
-                turmasFinal.push(outroTurma.trim());
-            }
-        }
-
-        const materiasFinal = selectedMaterias;
         const emailLimpo = email.trim();
-        if (!nome.trim() || !emailLimpo || !senha.trim() || !turmasFinal.length) {
+        if (!nome.trim() || !emailLimpo || !senha.trim() || !selectedTurmas.length) {
             Alert.alert("Erro", "Preencha nome, email, senha e ao menos uma turma.");
             return;
         }
@@ -111,8 +119,8 @@ export default function CadastroProfessor() {
                 nome: nome.trim(),
                 email: emailLimpo,
                 senha: senha, 
-                turmas: turmasFinal,
-                materias: materiasFinal, 
+                turmaIds: selectedTurmas.map(Number),
+                materiaIds: selectedMaterias.map(Number), 
             };
 
             const response = await fetch(`${API_BASE_URL}/professores`, {
@@ -133,7 +141,6 @@ export default function CadastroProfessor() {
             setEmail("");
             setSenha("");
             setSelectedTurmas([]);
-            setOutroTurma("");
             setSelectedMaterias([]);
 
         } catch (error) {
@@ -147,6 +154,14 @@ export default function CadastroProfessor() {
             <Gradient />
             <SafeAreaView style={styles.container}>
                 <View style={styles.content}>
+                    <View style={styles.header}>
+                        <TouchableOpacity
+                            onPress={() => router.back()}
+                            style={styles.iconCircle}
+                        >
+                            <Ionicons name="chevron-back" size={20} color="#fff" />
+                        </TouchableOpacity>
+                    </View>
                     <Text style={styles.title}>Cadastro Professor</Text>
 
                     <View style={styles.field}>
@@ -168,7 +183,7 @@ export default function CadastroProfessor() {
                         <Text style={globalStyles.whiteText}>Turmas</Text>
                         <MultipleSelectList
                             setSelected={(val: any) => setSelectedTurmas(val)}
-                            data={turmaOptions}
+                            data={turmasList}
                             save="key"
                             label="Turmas"
                             search={false}
@@ -176,19 +191,13 @@ export default function CadastroProfessor() {
                             dropdownStyles={styles.dropdown}
                             inputStyles={styles.dropdownInput}
                             dropdownTextStyles={styles.dropdownText}
-                            placeholder="Selecione turmas"
+                            placeholder={turmasList.length ? "Selecione turmas" : "Carregando turmas..."}
                             badgeTextStyles={{ color: 'white' } as any}
                             badgeStyles={{ backgroundColor: 'rgba(255,255,255,0.2)' }}
-                            checkBoxStyles={{ borderColor: 'white' }}
+                            checkBoxStyles={{ borderColor: 'white', backgroundColor: 'white' }}
+                            labelStyles={{ color: 'white' }}
                         />
                     </View>
-
-                    {selectedTurmas.includes("outros") && (
-                        <View style={styles.field}>
-                            <Text style={globalStyles.whiteText}>Especificar turma(s)</Text>
-                            <InputText placeholder="Ex: 1,2,3,4 ..." value={outroTurma} onChangeText={setOutroTurma} />
-                        </View>
-                    )}
 
                     <View style={styles.field}>
                         <Text style={globalStyles.whiteText}>Matérias</Text>
@@ -197,7 +206,7 @@ export default function CadastroProfessor() {
                         <MultipleSelectList
                             setSelected={(val: any) => setSelectedMaterias(val)}
                             data={materiasList}
-                            save="value" 
+                            save="key" 
                             label="Matérias"
                             search={false}
                             boxStyles={styles.dropdownBox}
@@ -207,7 +216,8 @@ export default function CadastroProfessor() {
                             placeholder={materiasList.length ? "Selecione matérias" : "Carregando matérias..."}
                             badgeTextStyles={{ color: 'white' } as any}
                             badgeStyles={{ backgroundColor: 'rgba(255,255,255,0.2)' }}
-                            checkBoxStyles={{ borderColor: 'white' }} 
+                            checkBoxStyles={{ borderColor: 'white', backgroundColor: 'white' }} 
+                            labelStyles={{ color: 'white' }}
                             notFoundText="Nenhuma matéria encontrada"
                         />
                     </View>
@@ -285,5 +295,19 @@ const styles = StyleSheet.create({
     },
     field: {
         marginBottom: 14,
+    },
+    header: {
+        width: "100%",
+        flexDirection: "row",
+        justifyContent: "flex-start",
+        marginBottom: 10,
+    },
+    iconCircle: {
+        width: 40,
+        height: 40,
+        borderRadius: 40,
+        backgroundColor: "rgba(255,255,255,0.20)",
+        justifyContent: "center",
+        alignItems: "center",
     },
 });
