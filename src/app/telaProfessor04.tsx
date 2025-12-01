@@ -96,7 +96,10 @@ export default function telaProfessor04() {
             <TouchableOpacity
               key={pergunta.id}
               style={{ width: "100%" }}
-              onPress={() => {}}
+              onPress={() => router.push({
+                pathname: "/telaProfessor05",
+                params: { questionId: pergunta.id }
+              })}
             >
               <View style={styles.wrapperAlternativa}>
                 <CardAlternativas
