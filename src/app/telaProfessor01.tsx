@@ -1,13 +1,15 @@
 import CardAlternativas from "@/components/cards/cardAlternativas";
 import { API_KEY } from "@/utils/apiKey";
-import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  Animated,
   Dimensions,
+  Easing,
+  Modal,
   ScrollView,
   StyleSheet,
   Text,
@@ -29,6 +31,9 @@ export default function TelaProfessor01() {
   
   const [materias, setMaterias] = useState<Materia[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+
+  const [showExitConfirm, setShowExitConfirm] = useState(false);
+  const fadeAnim = useRef(new Animated.Value(0)).current;
 
   const usuario = params.usuario ? JSON.parse(params.usuario as string) : null;
 
@@ -58,22 +63,34 @@ export default function TelaProfessor01() {
     }
   }
 
+  // ======= Animação de entrada do pop-up =======
+  const openExitModal = () => {
+    setShowExitConfirm(true);
+    fadeAnim.setValue(0);
+    Animated.timing(fadeAnim, {
+      toValue: 1,
+      duration: 250,
+      easing: Easing.out(Easing.ease),
+      useNativeDriver: true,
+    }).start();
+  };
+
+  // ======= Animação de saída do pop-up =======
+  const closeExitModal = () => {
+    Animated.timing(fadeAnim, {
+      toValue: 0,
+      duration: 200,
+      easing: Easing.in(Easing.ease),
+      useNativeDriver: true,
+    }).start(() => setShowExitConfirm(false));
+  };
+
   return (
     <LinearGradient colors={["#111b84", "#3c0e71"]} style={styles.container}>
       {/* Ícones topo */}
       <View style={styles.header}>
-        <TouchableOpacity
-          onPress={() => router.back()}
-          style={styles.iconCircle}
-        >
-          <Ionicons name="chevron-back" size={20} color="#fff" />
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          onPress={() => router.push("/telaProfessor01")}
-          style={styles.iconCircle}
-        >
-          <Ionicons name="home" size={20} color="#fff" />
+        <TouchableOpacity onPress={openExitModal}>
+          <Text style={styles.exitButton}>Sair</Text>
         </TouchableOpacity>
       </View>
 
@@ -117,6 +134,49 @@ export default function TelaProfessor01() {
           ))
         )}
       </ScrollView>
+
+      {/* ======= POP-UP CONFIRMAR SAÍDA ======= */}
+      <Modal transparent visible={showExitConfirm} animationType="none">
+        <View style={styles.modalOverlay}>
+          <Animated.View
+            style={[
+              styles.exitModalContent,
+              {
+                opacity: fadeAnim,
+                transform: [
+                  {
+                    scale: fadeAnim.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: [0.85, 1],
+                    }),
+                  },
+                ],
+              },
+            ]}
+          >
+            <Text style={styles.exitTitle}>Deseja realmente sair?</Text>
+
+            <View style={styles.exitButtons}>
+              <TouchableOpacity
+                style={[styles.exitBtn, { backgroundColor: "#E53935" }]}
+                onPress={closeExitModal}
+              >
+                <Text style={styles.exitText}>Cancelar</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.exitBtn, { backgroundColor: "#4CAF50" }]}
+                onPress={() => {
+                  closeExitModal();
+                  router.navigate("/");
+                }}
+              >
+                <Text style={styles.exitText}>Sair</Text>
+              </TouchableOpacity>
+            </View>
+          </Animated.View>
+        </View>
+      </Modal>
     </LinearGradient>
   );
 }
@@ -176,5 +236,52 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(255,255,255,0.20)",
     justifyContent: "center",
     alignItems: "center",
+  },
+  // ======= ESTILOS DO BOTÃO SAIR E MODAL =======
+  exitButton: {
+    color: "#fff",
+    fontSize: 16,
+    borderWidth: 1,
+    borderColor: "#fff",
+    borderRadius: 20,
+    paddingVertical: 6,
+    paddingHorizontal: 16,
+    fontWeight: "bold",
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.6)",
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 20,
+  },
+  exitModalContent: {
+    backgroundColor: "#fff",
+    borderRadius: 16,
+    width: "85%",
+    padding: 25,
+    alignItems: "center",
+  },
+  exitTitle: {
+    fontSize: 18,
+    fontWeight: "bold",
+    color: "#2D0C57",
+    marginBottom: 20,
+    textAlign: "center",
+  },
+  exitButtons: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    width: "80%",
+    marginTop: 10,
+  },
+  exitBtn: {
+    borderRadius: 10,
+    paddingVertical: 8,
+    paddingHorizontal: 20,
+  },
+  exitText: {
+    color: "#fff",
+    fontWeight: "bold",
   },
 });

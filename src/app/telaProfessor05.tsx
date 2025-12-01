@@ -1,10 +1,10 @@
 import CardAlternativas from "@/components/cards/cardAlternativas";
 import CardEnunciado from "@/components/cards/cardEnunciado";
-import CardEnunciadoSearch from "@/components/cards/cardEnunciadoSearch";
 import { backgroundStyles, Gradient } from "@/styles/background";
 import { API_KEY } from "@/utils/apiKey";
 import { Ionicons } from "@expo/vector-icons";
-import React, { useMemo, useState } from "react";
+import { useLocalSearchParams, useRouter } from "expo-router";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -41,17 +41,6 @@ async function getQuestionById(id: number): Promise<Question> {
   return res.json();
 }
 
-// Buscar questões por texto do enunciado
-async function searchQuestionsByText(term: string): Promise<Question[]> {
-  const res = await fetch(
-    `${API_BASE_URL}/perguntas?enunciado_like=${encodeURIComponent(term)}`
-  );
-  if (!res.ok) {
-    throw new Error("Erro ao buscar questões.");
-  }
-  return res.json();
-}
-
 // Atualizar questão
 async function updateQuestion(q: Question): Promise<void> {
   const res = await fetch(`${API_BASE_URL}/perguntas/${q.id}`, {
@@ -77,10 +66,8 @@ async function deleteQuestion(id: number): Promise<void> {
 
 
 export default function TelaProfessor05() {
-  // BUSCA
-  const [searchText, setSearchText] = useState("");
-  const [searching, setSearching] = useState(false);
-  const [results, setResults] = useState<Question[]>([]);
+  const router = useRouter();
+  const { questionId } = useLocalSearchParams();
 
   // Questão selecionada
   const [selectedQuestion, setSelectedQuestion] = useState<Question | null>(
@@ -140,30 +127,16 @@ export default function TelaProfessor05() {
     });
   };
 
-  /* ---------------------- BUSCA ---------------------- */
-
-  const handleSearch = async () => {
-    const term = searchText.trim();
-    if (!term) return;
-
-    setSearching(true);
-    try {
-      if (/^\d+$/.test(term)) {
-        const q = await getQuestionById(Number(term));
-        setResults(q ? [q] : []);
-      } else {
-        const list = await searchQuestionsByText(term);
-        setResults(list);
-      }
-    } catch (e: any) {
-      Alert.alert("Erro", e?.message ?? "Falha ao buscar.");
-      setResults([]);
-    } finally {
-      setSearching(false);
-    }
-  };
-
   /* ---------------------- CARREGAR QUESTÃO ---------------------- */
+
+  useEffect(() => {
+    if (questionId) {
+      const id = Number(questionId);
+      getQuestionById(id)
+        .then((q) => handleSelectQuestion(q))
+        .catch((e) => Alert.alert("Erro", e.message));
+    }
+  }, [questionId]);
 
   const handleSelectQuestion = (q: Question) => {
     setSelectedQuestion(q);
@@ -192,12 +165,7 @@ export default function TelaProfessor05() {
       indiceCorreta: idxCorreta,
       explicacao: exp,
     });
-
-    setResults([]);
   };
-
-  /* ---------------------- SALVAR ---------------------- */
-
   /*Considerar o incremento de POP-UP aqui também */
 
   const handleSalvar = async () => {
@@ -314,7 +282,7 @@ export default function TelaProfessor05() {
         {/* HEADER */}
         <View style={styles.header}>
           {/* BOTÃO VOLTAR */}
-          <TouchableOpacity style={styles.roundIcon} disabled={saving}>
+          <TouchableOpacity style={styles.roundIcon} disabled={saving} onPress={() => router.back()}>
             <Ionicons name="chevron-back" size={22} color="#fff" />
           </TouchableOpacity>
 
@@ -351,57 +319,10 @@ export default function TelaProfessor05() {
         >
           <Text style={styles.screenTitle}>Editar Questões</Text>
 
-          {/* BUSCA */}
-          <Text style={styles.searchLabel}>
-            Buscar questão (ID ou início do enunciado)
-          </Text>
-
-          <View style={styles.searchOuter}>
-            <View style={styles.searchRow}>
-              <CardEnunciadoSearch
-                value={searchText}
-                onChangeText={setSearchText}
-                placeholder="Digite aqui..."
-              />
-
-              <TouchableOpacity
-                style={styles.searchButton}
-                onPress={handleSearch}
-                disabled={searching}
-              >
-                {searching ? (
-                  <ActivityIndicator size="small" color="#333" />
-                ) : (
-                  <Text style={styles.searchButtonText}>Buscar</Text>
-                )}
-              </TouchableOpacity>
-            </View>
-          </View>
-
-          {/* RESULTADOS DA BUSCA */}
-          {results.length > 0 && (
-            <View style={styles.resultsBox}>
-              {results.map((q) => (
-                <TouchableOpacity
-                  key={q.id}
-                  style={styles.resultItem}
-                  onPress={() => handleSelectQuestion(q)}
-                >
-                  <Text style={styles.resultTitle}>
-                    #{q.id} –{" "}
-                    {q.enunciado.length > 60
-                      ? q.enunciado.slice(0, 60) + "..."
-                      : q.enunciado}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          )}
-
           {/* ENUNCIADO */}
           <Text style={styles.enunciadoLabel}>
             {selectedQuestion
-              ? `Enunciado da questão #${selectedQuestion.id}`
+              ? `Enunciado da questão`
               : "Enunciado da questão"}
           </Text>
 
@@ -410,7 +331,7 @@ export default function TelaProfessor05() {
               value={enunciado}
               onChangeText={setEnunciado}
               placeholder="Enunciado da questão..."
-              contentMinHeight={80} // 🔹 altura mínima (pode ajustar)
+              contentMinHeight={80}
               containerStyle={styles.enunciadoCard}
             />
           </View>
@@ -430,7 +351,7 @@ export default function TelaProfessor05() {
           {/*EXPLICAÇÃO */}
           <Text style={styles.enunciadoLabel}>
             {selectedQuestion
-              ? `Explicação da questão #${selectedQuestion.id}`
+              ? `Explicação da questão`
               : "Explicação da questão"}
           </Text>
 
@@ -515,65 +436,11 @@ const styles = StyleSheet.create({
     borderRadius: 12,
   },
 
-  // usado só para o bloco de BUSCA
-  searchOuter: {
-    backgroundColor: "#fff",
-    borderRadius: 16,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    marginBottom: 14,
-  },
-
-  searchButton: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 10,
-    backgroundColor: "rgba(0,0,0,0.08)",
-  },
-
-  searchButtonText: {
-    color: "#333",
-    fontWeight: "600",
-    fontSize: 13,
-  },
-
-  resultsBox: {
-    marginBottom: 14,
-    backgroundColor: "rgba(255,255,255,0.9)",
-    borderRadius: 12,
-    paddingVertical: 4,
-  },
-
-  resultItem: {
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-  },
-
-  resultTitle: {
-    color: "#222",
-    fontSize: 13,
-  },
-
   deleteChip: {
     paddingHorizontal: 10,
     paddingVertical: 6,
     borderRadius: 16,
     backgroundColor: "rgba(255,255,255,0.15)",
     marginRight: 10,
-  },
-
-  searchLabel: {
-    color: "#FFFFFF",
-    fontSize: 13,
-    fontWeight: "600",
-    marginBottom: 4,
-    marginLeft: 4,
-  },
-
-  searchRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    width: "100%",
   },
 });

@@ -70,11 +70,13 @@ export default function telaProfessor04() {
         </TouchableOpacity>
 
         <TouchableOpacity
-          onPress={() => router.push("/telaProfessor01")}
+          onPress={() => router.push({
+            pathname: "/telaProfessor01",
+            params: { usuario: params.usuario as string }
+          })}
           style={styles.iconCircle}        // ⬅ círculo na casinha
         >
           <Ionicons name="home" size={20} color="#fff" />
-          {/* home = casinha preenchida */}
         </TouchableOpacity>
       </View>
 
@@ -94,7 +96,10 @@ export default function telaProfessor04() {
             <TouchableOpacity
               key={pergunta.id}
               style={{ width: "100%" }}
-              onPress={() => {}}
+              onPress={() => router.push({
+                pathname: "/telaProfessor05",
+                params: { questionId: pergunta.id }
+              })}
             >
               <View style={styles.wrapperAlternativa}>
                 <CardAlternativas
@@ -113,8 +118,8 @@ export default function telaProfessor04() {
         <View style={{ width: "100%" }}>
           <GradientButton
             title="Criar"
-            width={"100%"}    // ⬅ botãa ocupa toda a largura
-            height={60}       // ⬅ ajuste para parecido com os cards
+            width={"100%"}    
+            height={60}      
             fontSize={18}
             gradientColor={["#0656E8", "#00A8FF"]}
             onPress={() => router.push({

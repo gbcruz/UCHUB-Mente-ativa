@@ -70,8 +70,11 @@ export default function telaProfessor02() {
           <Ionicons name="chevron-back" size={20} color="#fff" />
         </TouchableOpacity>
 
-        <TouchableOpacity
-          onPress={() => router.push("/telaProfessor01")}
+      <TouchableOpacity
+          onPress={() => router.push({
+            pathname: "/telaProfessor01",
+            params: { usuario: params.usuario as string }
+          })}
           style={styles.iconCircle}
         >
           <Ionicons name="home" size={20} color="#fff" />
