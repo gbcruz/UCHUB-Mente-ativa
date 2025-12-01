@@ -3,7 +3,7 @@ import CardEnunciado from "@/components/cards/cardEnunciado";
 import { backgroundStyles, Gradient } from "@/styles/background";
 import { API_KEY } from "@/utils/apiKey";
 import { Ionicons } from "@expo/vector-icons";
-import { useLocalSearchParams } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
@@ -66,6 +66,7 @@ async function deleteQuestion(id: number): Promise<void> {
 
 
 export default function TelaProfessor05() {
+  const router = useRouter();
   const { questionId } = useLocalSearchParams();
 
   // Questão selecionada
@@ -281,7 +282,7 @@ export default function TelaProfessor05() {
         {/* HEADER */}
         <View style={styles.header}>
           {/* BOTÃO VOLTAR */}
-          <TouchableOpacity style={styles.roundIcon} disabled={saving}>
+          <TouchableOpacity style={styles.roundIcon} disabled={saving} onPress={() => router.back()}>
             <Ionicons name="chevron-back" size={22} color="#fff" />
           </TouchableOpacity>
 
