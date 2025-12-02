@@ -319,6 +319,8 @@ export default function TelaProfessor05() {
         >
           <Text style={styles.screenTitle}>Editar Questões</Text>
 
+          {/* Nessa linha que vou precisar colocar o cardBloco, mas como faço isso? */}
+
           {/* ENUNCIADO */}
           <Text style={styles.enunciadoLabel}>
             {selectedQuestion
