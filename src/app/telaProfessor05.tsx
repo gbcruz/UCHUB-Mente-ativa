@@ -28,6 +28,7 @@ type Question = {
   turma?: number;
   autorId?: number;
   dificuldade?: string;
+  bloco?: string; // ⬅️ NOVO: bloco da questão
 };
 
 /* ---------------------- FUNÇÕES DE API ---------------------- */
@@ -64,7 +65,6 @@ async function deleteQuestion(id: number): Promise<void> {
   }
 }
 
-
 export default function TelaProfessor05() {
   const router = useRouter();
   const { questionId } = useLocalSearchParams();
@@ -83,16 +83,11 @@ export default function TelaProfessor05() {
     "",
     "",
   ]);
-
   const [explicacao, setExplicacao] = useState("");
-
-
   const [indiceCorreta, setIndiceCorreta] = useState<number | null>(null);
-
-  
   const [saving, setSaving] = useState(false);
 
-  // Estado inicial (para detectar lixo de memória)
+  // Estado inicial (para detectar alterações)
   const [initial, setInitial] = useState<{
     enunciado: string;
     alternativas: string[];
@@ -112,7 +107,6 @@ export default function TelaProfessor05() {
 
     if (initial.indiceCorreta !== indiceCorreta) return true;
 
-    // verificar se a explicação foi atualizada
     if (initial.explicacao !== explicacao) return true;
 
     return false;
@@ -151,7 +145,6 @@ export default function TelaProfessor05() {
     const idxCorreta =
       typeof q.indiceCorreta === "number" ? q.indiceCorreta : 0;
 
-    //pega explicação vinda da API (ou string vazia)
     const exp = q.explicacao ?? "";
 
     setEnunciado(enun);
@@ -166,7 +159,6 @@ export default function TelaProfessor05() {
       explicacao: exp,
     });
   };
-  /*Considerar o incremento de POP-UP aqui também */
 
   const handleSalvar = async () => {
     if (!selectedQuestion) {
@@ -196,7 +188,7 @@ export default function TelaProfessor05() {
         enunciado: enunciado.trim(),
         alternativas: alternativasTrim,
         indiceCorreta: indiceCorreta,
-        explicacao: explicacao.trim(), // mandar a explicação para a API
+        explicacao: explicacao.trim(),
       };
 
       await updateQuestion(payload);
@@ -205,7 +197,7 @@ export default function TelaProfessor05() {
         enunciado: payload.enunciado,
         alternativas: [...alternativasTrim],
         indiceCorreta: payload.indiceCorreta ?? 0,
-        explicacao: payload.explicacao ?? "", // atualiza estado inicial
+        explicacao: payload.explicacao ?? "",
       });
 
       setSelectedQuestion(payload);
@@ -227,7 +219,6 @@ export default function TelaProfessor05() {
       return;
     }
 
-    //  Comportamento especial para WEB (Expo Web / navegador). Colocar isso em formato de Pop-Up
     if (Platform.OS === "web") {
       const ok = window.confirm(
         "Tem certeza que deseja apagar esta questão permanentemente?"
@@ -238,7 +229,6 @@ export default function TelaProfessor05() {
       return;
     }
 
-    //Mobile (Android / iOS) usa Alert nativo com botões. Colocar pop-ups depois no lugar
     Alert.alert(
       "Excluir questão",
       "Tem certeza que deseja apagar esta questão permanentemente?",
@@ -247,7 +237,7 @@ export default function TelaProfessor05() {
         {
           text: "Apagar",
           style: "destructive",
-          onPress: executeDelete, 
+          onPress: executeDelete,
         },
       ]
     );
@@ -259,7 +249,6 @@ export default function TelaProfessor05() {
     try {
       await deleteQuestion(selectedQuestion.id);
 
-      // Limpa a tela toda
       setSelectedQuestion(null);
       setEnunciado("");
       setAlternativas(["", "", "", "", ""]);
@@ -282,7 +271,11 @@ export default function TelaProfessor05() {
         {/* HEADER */}
         <View style={styles.header}>
           {/* BOTÃO VOLTAR */}
-          <TouchableOpacity style={styles.roundIcon} disabled={saving} onPress={() => router.back()}>
+          <TouchableOpacity
+            style={styles.roundIcon}
+            disabled={saving}
+            onPress={() => router.back()}
+          >
             <Ionicons name="chevron-back" size={22} color="#fff" />
           </TouchableOpacity>
 
@@ -319,14 +312,8 @@ export default function TelaProfessor05() {
         >
           <Text style={styles.screenTitle}>Editar Questões</Text>
 
-          {/* Nessa linha que vou precisar colocar o cardBloco, mas como faço isso? */}
-
           {/* ENUNCIADO */}
-          <Text style={styles.enunciadoLabel}>
-            {selectedQuestion
-              ? `Enunciado da questão`
-              : "Enunciado da questão"}
-          </Text>
+          <Text style={styles.enunciadoLabel}>Enunciado da questão</Text>
 
           <View style={styles.enunciadoOuter}>
             <CardEnunciado
@@ -350,20 +337,16 @@ export default function TelaProfessor05() {
             />
           ))}
 
-          {/*EXPLICAÇÃO */}
-          <Text style={styles.enunciadoLabel}>
-            {selectedQuestion
-              ? `Explicação da questão`
-              : "Explicação da questão"}
-          </Text>
+          {/* EXPLICAÇÃO */}
+          <Text style={styles.enunciadoLabel}>Explicação da questão</Text>
 
           <View style={styles.enunciadoOuter}>
             <CardEnunciado
               value={explicacao}
               onChangeText={setExplicacao}
               placeholder="Resolução da questão..."
-              contentMinHeight={80} 
-              containerStyle={styles.enunciadoCard} 
+              contentMinHeight={80}
+              containerStyle={styles.enunciadoCard}
             />
           </View>
         </ScrollView>
