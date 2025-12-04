@@ -28,7 +28,7 @@ type Question = {
   turma?: number;
   autorId?: number;
   dificuldade?: string;
-  bloco?: string; // ⬅️ NOVO: bloco da questão
+  bloco?: string; // NOVO: bloco da questão
 };
 
 /* ---------------------- FUNÇÕES DE API ---------------------- */

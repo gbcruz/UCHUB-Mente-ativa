@@ -27,15 +27,15 @@ type NewQuestion = {
   indiceCorreta: number;
   explicacao?: string;
   bloco?: string;
-  autorId: number;
-  turma: number;
+  autorId?: number; // ⬅️ agora opcionais
+  turma?: number;   // ⬅️ agora opcionais
 };
 
 // Estrutura para controlar informações de cada bloco
 type BlockInfo = {
-  name: string; // "Bloco 1"
-  count: number; // qtd de questões já criadas nesse bloco
-  max: number; // limite de questões (ex: 10)
+  name: string;
+  count: number;
+  max: number;
 };
 
 // Tipagem básica da questão vinda da API (para contar blocos)
@@ -47,14 +47,14 @@ type QuestionFromAPI = {
 export default function CriarQuestoes() {
   const router = useRouter();
 
-  // autorId e turma vindos da navegação (ajusta os nomes se precisar)
-  const { autorId, turma } = useLocalSearchParams<{
-    autorId: string;
-    turma: string;
+  // autorId e turma (opcionais) vindos da navegação
+  const params = useLocalSearchParams<{
+    autorId?: string;
+    turma?: string;
   }>();
 
-  const autorIdNumber = Number(autorId);
-  const turmaNumber = Number(turma);
+  const autorIdNumber = params.autorId ? Number(params.autorId) : null;
+  const turmaNumber = params.turma ? Number(params.turma) : null;
 
   const [enunciado, setEnunciado] = useState("");
   const [alternativas, setAlternativas] = useState<string[]>([
@@ -66,7 +66,6 @@ export default function CriarQuestoes() {
   ]);
   const [explicacao, setExplicacao] = useState("");
 
-  // Lista dinâmica de blocos com contagem de questões
   const [blocos, setBlocos] = useState<BlockInfo[]>([
     { name: "Bloco 1", count: 0, max: 10 },
     { name: "Bloco 2", count: 0, max: 10 },
@@ -79,31 +78,24 @@ export default function CriarQuestoes() {
   const [indiceCorreta, setIndiceCorreta] = useState<number | null>(null);
   const [saving, setSaving] = useState(false);
 
-  // Estado da UI de criação de novo bloco
   const [criandoBloco, setCriandoBloco] = useState(false);
   const [novoNomeBloco, setNovoNomeBloco] = useState("");
 
   /* ---------------------- CARREGAR CONTAGEM DE QUESTÕES POR BLOCO ---------------------- */
   useEffect(() => {
-    // Se por algum motivo não tiver autor/turma válidos, não tenta carregar
-    if (!Number.isFinite(autorIdNumber) || !Number.isFinite(turmaNumber)) {
-      console.warn(
-        "CriarQuestoes: autorId ou turma inválidos. Verifique a navegação."
-      );
-      return;
-    }
-
     const carregarContagemBlocos = async () => {
       try {
-        // só traz as questões desse professor + turma
-        const res = await fetch(
-          `${API_BASE_URL}/perguntas?autorId=${autorIdNumber}&turma=${turmaNumber}`
-        );
+        // Se tiver autorId + turma, filtra. Senão, usa tudo (comportamento antigo)
+        const url =
+          autorIdNumber != null && turmaNumber != null
+            ? `${API_BASE_URL}/perguntas?autorId=${autorIdNumber}&turma=${turmaNumber}`
+            : `${API_BASE_URL}/perguntas`;
+
+        const res = await fetch(url);
         if (!res.ok) return;
 
         const data: QuestionFromAPI[] = await res.json();
 
-        // Mapa: { "Bloco 1": 8, "Bloco 2": 0, ... }
         const counts: Record<string, number> = {};
         data.forEach((q) => {
           if (!q.bloco) return;
@@ -118,7 +110,6 @@ export default function CriarQuestoes() {
             count: counts[b.name] || 0,
           }));
 
-          // Se aparecer bloco novo no banco, adiciona na lista
           Object.entries(counts).forEach(([name, count]) => {
             if (!existingNames.includes(name)) {
               next.push({ name, count, max: 10 });
@@ -143,12 +134,10 @@ export default function CriarQuestoes() {
     setAlternativas(next);
   };
 
-  // Quando o usuário toca em "Criar novo bloco" no dropdown
   const handlePressCriarNovoBloco = () => {
     setCriandoBloco(true);
   };
 
-  // Confirmar criação do novo bloco
   const handleConfirmarNovoBloco = () => {
     const nome = novoNomeBloco.trim();
 
@@ -162,12 +151,8 @@ export default function CriarQuestoes() {
       return;
     }
 
-    // Adiciona novo bloco com contagem 0
     setBlocos((prev) => [...prev, { name: nome, count: 0, max: 10 }]);
-
-    // Já seleciona esse bloco para a questão
     setBlocoSelecionado(nome);
-
     setNovoNomeBloco("");
     setCriandoBloco(false);
   };
@@ -202,14 +187,6 @@ export default function CriarQuestoes() {
       return;
     }
 
-    if (!Number.isFinite(autorIdNumber) || !Number.isFinite(turmaNumber)) {
-      Alert.alert(
-        "Erro",
-        "Não foi possível identificar o professor ou a turma."
-      );
-      return;
-    }
-
     // Verifica se o bloco já atingiu o limite
     const infoBloco = blocos.find((b) => b.name === blocoSelecionado);
     if (infoBloco && infoBloco.count >= infoBloco.max) {
@@ -220,20 +197,25 @@ export default function CriarQuestoes() {
       return;
     }
 
-    const payload: NewQuestion = {
+    const payloadBase: NewQuestion = {
       enunciado: enunciado.trim(),
       alternativas: alternativasTrim,
       indiceCorreta,
       explicacao: explicacao.trim() || undefined,
       bloco: blocoSelecionado || undefined,
-      autorId: autorIdNumber,
-      turma: turmaNumber,
+    };
+
+    // Só adiciona autorId/turma se realmente tiver vindo algo da navegação
+    const payload: NewQuestion = {
+      ...payloadBase,
+      ...(autorIdNumber != null ? { autorId: autorIdNumber } : {}),
+      ...(turmaNumber != null ? { turma: turmaNumber } : {}),
     };
 
     try {
       setSaving(true);
 
-      const blocoAtual = blocoSelecionado; // guarda antes de limpar
+      const blocoAtual = blocoSelecionado;
 
       const res = await fetch(`${API_BASE_URL}/perguntas`, {
         method: "POST",
@@ -245,7 +227,6 @@ export default function CriarQuestoes() {
         throw new Error("Erro ao salvar a questão.");
       }
 
-      // Atualiza contagem do bloco localmente (+1 questão)
       if (blocoAtual) {
         setBlocos((prev) =>
           prev.map((b) =>
@@ -256,7 +237,6 @@ export default function CriarQuestoes() {
 
       Alert.alert("Sucesso", "Questão criada com sucesso!");
 
-      // Limpa campos
       setEnunciado("");
       setAlternativas(["", "", "", "", ""]);
       setExplicacao("");
@@ -319,7 +299,6 @@ export default function CriarQuestoes() {
             containerStyle={{ marginBottom: 12 }}
           />
 
-          {/* UI para criar novo bloco */}
           {criandoBloco && (
             <View style={styles.newBlockBox}>
               <Text style={styles.newBlockLabel}>Nome do novo bloco</Text>
@@ -444,8 +423,6 @@ const styles = StyleSheet.create({
     padding: 10,
     borderRadius: 12,
   },
-
-  // Área de criação de novo bloco
   newBlockBox: {
     marginBottom: 16,
     borderRadius: 16,
