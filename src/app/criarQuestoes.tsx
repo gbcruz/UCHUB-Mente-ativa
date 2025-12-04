@@ -20,41 +20,59 @@ import { useRouter, useLocalSearchParams } from "expo-router";
 
 const API_BASE_URL = API_KEY;
 
-// Payload para criar questão nova
+/* ---------------------- TIPAGENS ---------------------- */
+
+// Payload para criar questão nova – agora alinhado com o JSON do Replit
 type NewQuestion = {
   enunciado: string;
   alternativas: string[];
   indiceCorreta: number;
   explicacao?: string;
-  bloco?: string;
-  autorId?: number; // ⬅️ agora opcionais
-  turma?: number;   // ⬅️ agora opcionais
+  blocosId: number;      // 🔹 relação com a tabela blocos
+  materiaId?: number;    // 🔹 opcional, mas alinhado com JSON
+  turmaId?: number;      // 🔹 opcional, mas alinhado com JSON
+  autorId?: number;      // se você usar depois
 };
 
-// Estrutura para controlar informações de cada bloco
+// Estrutura dos blocos vindos da API
+type BlockFromAPI = {
+  id: number;
+  nome: string;
+  materiaId?: number;
+  turmaId?: number;
+};
+
+// Estrutura para armazenar blocos na UI, com contagem
 type BlockInfo = {
+  id: number;
   name: string;
   count: number;
   max: number;
 };
 
-// Tipagem básica da questão vinda da API (para contar blocos)
+// Tipagem da questão vinda da API (usada só pra contar por bloco)
 type QuestionFromAPI = {
   id: number;
-  bloco?: string;
+  blocosId?: number; // 🔹 novo modelo
+  bloco?: string;    // 🔹 casos antigos no banco que ainda usam string
 };
 
 export default function CriarQuestoes() {
   const router = useRouter();
 
-  // autorId e turma (opcionais) vindos da navegação
+  // 🔹 Agora esperamos que a navegação envie autorId, turmaId e materiaId
   const params = useLocalSearchParams<{
     autorId?: string;
-    turma?: string;
+    turmaId?: string;
+    materiaId?: string;
   }>();
 
-  const autorIdNumber = params.autorId ? Number(params.autorId) : null;
-  const turmaNumber = params.turma ? Number(params.turma) : null;
+  const autorIdNumber =
+    typeof params.autorId === "string" ? Number(params.autorId) : null;
+  const turmaIdNumber =
+    typeof params.turmaId === "string" ? Number(params.turmaId) : null;
+  const materiaIdNumber =
+    typeof params.materiaId === "string" ? Number(params.materiaId) : null;
 
   const [enunciado, setEnunciado] = useState("");
   const [alternativas, setAlternativas] = useState<string[]>([
@@ -66,65 +84,73 @@ export default function CriarQuestoes() {
   ]);
   const [explicacao, setExplicacao] = useState("");
 
-  const [blocos, setBlocos] = useState<BlockInfo[]>([
-    { name: "Bloco 1", count: 0, max: 10 },
-    { name: "Bloco 2", count: 0, max: 10 },
-    { name: "Bloco 3", count: 0, max: 10 },
-    { name: "Bloco 4", count: 0, max: 10 },
-    { name: "Bloco 5", count: 0, max: 10 },
-  ]);
+  // 🔹 blocos vêm da API, então começamos com array vazio
+  const [blocos, setBlocos] = useState<BlockInfo[]>([]);
 
-  const [blocoSelecionado, setBlocoSelecionado] = useState<string | null>(null);
+  // 🔹 guardamos o ID do bloco selecionado
+  const [blocoSelecionadoId, setBlocoSelecionadoId] = useState<number | null>(
+    null
+  );
   const [indiceCorreta, setIndiceCorreta] = useState<number | null>(null);
   const [saving, setSaving] = useState(false);
 
   const [criandoBloco, setCriandoBloco] = useState(false);
   const [novoNomeBloco, setNovoNomeBloco] = useState("");
 
-  /* ---------------------- CARREGAR CONTAGEM DE QUESTÕES POR BLOCO ---------------------- */
+  /* ---------------------- CARREGAR BLOCOS + CONTAGEM ---------------------- */
+
   useEffect(() => {
-    const carregarContagemBlocos = async () => {
+    const carregarBlocos = async () => {
       try {
-        // Se tiver autorId + turma, filtra. Senão, usa tudo (comportamento antigo)
-        const url =
-          autorIdNumber != null && turmaNumber != null
-            ? `${API_BASE_URL}/perguntas?autorId=${autorIdNumber}&turma=${turmaNumber}`
-            : `${API_BASE_URL}/perguntas`;
+        // monta query string: ?turmaId=4&materiaId=1
+        const paramsQuery: string[] = [];
+        if (turmaIdNumber != null) paramsQuery.push(`turmaId=${turmaIdNumber}`);
+        if (materiaIdNumber != null)
+          paramsQuery.push(`materiaId=${materiaIdNumber}`);
+        const queryString =
+          paramsQuery.length > 0 ? `?${paramsQuery.join("&")}` : "";
 
-        const res = await fetch(url);
-        if (!res.ok) return;
+        // 🔹 1) Buscar blocos cadastrados
+        const resBlocos = await fetch(`${API_BASE_URL}/blocos${queryString}`);
+        if (!resBlocos.ok) {
+          console.log("Erro ao carregar blocos");
+          return;
+        }
+        const blocosApi: BlockFromAPI[] = await resBlocos.json();
 
-        const data: QuestionFromAPI[] = await res.json();
+        // 🔹 2) Buscar perguntas para contar quantas existem por bloco
+        const resPerguntas = await fetch(
+          `${API_BASE_URL}/perguntas${queryString}`
+        );
+        let perguntasApi: QuestionFromAPI[] = [];
+        if (resPerguntas.ok) {
+          perguntasApi = await resPerguntas.json();
+        }
 
-        const counts: Record<string, number> = {};
-        data.forEach((q) => {
-          if (!q.bloco) return;
-          counts[q.bloco] = (counts[q.bloco] || 0) + 1;
+        const counts: Record<number, number> = {};
+
+        perguntasApi.forEach((q) => {
+          if (q.blocosId != null) {
+            counts[q.blocosId] = (counts[q.blocosId] || 0) + 1;
+          }
         });
 
-        setBlocos((prev) => {
-          const existingNames = prev.map((b) => b.name);
+        // 🔹 3) Montar estrutura BlockInfo
+        const mapped: BlockInfo[] = blocosApi.map((b) => ({
+          id: b.id,
+          name: b.nome,
+          count: counts[b.id] || 0,
+          max: 10, // limite de 10 questões por bloco
+        }));
 
-          const next: BlockInfo[] = prev.map((b) => ({
-            ...b,
-            count: counts[b.name] || 0,
-          }));
-
-          Object.entries(counts).forEach(([name, count]) => {
-            if (!existingNames.includes(name)) {
-              next.push({ name, count, max: 10 });
-            }
-          });
-
-          return next;
-        });
+        setBlocos(mapped);
       } catch (err) {
-        console.log("Erro ao carregar contagem de blocos:", err);
+        console.log("Erro ao carregar blocos:", err);
       }
     };
 
-    carregarContagemBlocos();
-  }, [autorIdNumber, turmaNumber]);
+    carregarBlocos();
+  }, [turmaIdNumber, materiaIdNumber]);
 
   /* ---------------------- HANDLERS DE UI ---------------------- */
 
@@ -138,7 +164,8 @@ export default function CriarQuestoes() {
     setCriandoBloco(true);
   };
 
-  const handleConfirmarNovoBloco = () => {
+  // 🔹 Agora criamos o bloco DE FATO no Replit (POST /blocos)
+  const handleConfirmarNovoBloco = async () => {
     const nome = novoNomeBloco.trim();
 
     if (!nome) {
@@ -146,15 +173,53 @@ export default function CriarQuestoes() {
       return;
     }
 
+    // evita duplicado na UI (mesmo nome)
     if (blocos.some((b) => b.name === nome)) {
       Alert.alert("Atenção", "Esse bloco já existe.");
       return;
     }
 
-    setBlocos((prev) => [...prev, { name: nome, count: 0, max: 10 }]);
-    setBlocoSelecionado(nome);
-    setNovoNomeBloco("");
-    setCriandoBloco(false);
+    try {
+      // monta payload compatível com a tabela "blocos"
+      const novoBlocoPayload: Omit<BlockFromAPI, "id"> = {
+        nome,
+        ...(turmaIdNumber != null ? { turmaId: turmaIdNumber } : {}),
+        ...(materiaIdNumber != null ? { materiaId: materiaIdNumber } : {}),
+      };
+
+      const res = await fetch(`${API_BASE_URL}/blocos`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(novoBlocoPayload),
+      });
+
+      if (!res.ok) {
+        throw new Error("Erro ao salvar o bloco.");
+      }
+
+      const blocoCriado: BlockFromAPI = await res.json();
+
+      // adiciona na lista de blocos com count = 0
+      setBlocos((prev) => [
+        ...prev,
+        {
+          id: blocoCriado.id,
+          name: blocoCriado.nome,
+          count: 0,
+          max: 10,
+        },
+      ]);
+
+      // seleciona automaticamente o novo bloco
+      setBlocoSelecionadoId(blocoCriado.id);
+      setNovoNomeBloco("");
+      setCriandoBloco(false);
+    } catch (err: any) {
+      Alert.alert(
+        "Erro",
+        err?.message ?? "Não foi possível criar o novo bloco."
+      );
+    }
   };
 
   const handleCancelarNovoBloco = () => {
@@ -182,13 +247,12 @@ export default function CriarQuestoes() {
       return;
     }
 
-    if (!blocoSelecionado) {
+    if (blocoSelecionadoId == null) {
       Alert.alert("Atenção", "Selecione o bloco da questão.");
       return;
     }
 
-    // Verifica se o bloco já atingiu o limite
-    const infoBloco = blocos.find((b) => b.name === blocoSelecionado);
+    const infoBloco = blocos.find((b) => b.id === blocoSelecionadoId);
     if (infoBloco && infoBloco.count >= infoBloco.max) {
       Alert.alert(
         "Limite atingido",
@@ -197,25 +261,20 @@ export default function CriarQuestoes() {
       return;
     }
 
-    const payloadBase: NewQuestion = {
+    // 🔹 monta payload no formato do JSON-server
+    const payload: NewQuestion = {
       enunciado: enunciado.trim(),
       alternativas: alternativasTrim,
       indiceCorreta,
       explicacao: explicacao.trim() || undefined,
-      bloco: blocoSelecionado || undefined,
-    };
-
-    // Só adiciona autorId/turma se realmente tiver vindo algo da navegação
-    const payload: NewQuestion = {
-      ...payloadBase,
+      blocosId: blocoSelecionadoId,
+      ...(materiaIdNumber != null ? { materiaId: materiaIdNumber } : {}),
+      ...(turmaIdNumber != null ? { turmaId: turmaIdNumber } : {}),
       ...(autorIdNumber != null ? { autorId: autorIdNumber } : {}),
-      ...(turmaNumber != null ? { turma: turmaNumber } : {}),
     };
 
     try {
       setSaving(true);
-
-      const blocoAtual = blocoSelecionado;
 
       const res = await fetch(`${API_BASE_URL}/perguntas`, {
         method: "POST",
@@ -227,21 +286,21 @@ export default function CriarQuestoes() {
         throw new Error("Erro ao salvar a questão.");
       }
 
-      if (blocoAtual) {
-        setBlocos((prev) =>
-          prev.map((b) =>
-            b.name === blocoAtual ? { ...b, count: b.count + 1 } : b
-          )
-        );
-      }
+      // incrementa contagem local do bloco
+      setBlocos((prev) =>
+        prev.map((b) =>
+          b.id === blocoSelecionadoId ? { ...b, count: b.count + 1 } : b
+        )
+      );
 
       Alert.alert("Sucesso", "Questão criada com sucesso!");
 
+      // reseta formulário
       setEnunciado("");
       setAlternativas(["", "", "", "", ""]);
       setExplicacao("");
       setIndiceCorreta(null);
-      setBlocoSelecionado(null);
+      setBlocoSelecionadoId(null);
     } catch (e: any) {
       Alert.alert("Erro", e?.message ?? "Falha ao salvar a questão.");
     } finally {
@@ -284,16 +343,22 @@ export default function CriarQuestoes() {
           contentContainerStyle={styles.content}
           keyboardShouldPersistTaps="handled"
         >
-          {/* CARD BLOCO COM CONTAGEM N/10 */}
+          {/* CARD BLOCO - AGORA VINDO DO REPLIT */}
           <CardBloco
             label="Selecione o bloco"
             placeholder="Selecione o bloco"
-            value={blocoSelecionado}
+            // 🔹 value do CardBloco é string – usamos o ID convertido
+            value={
+              blocoSelecionadoId != null ? String(blocoSelecionadoId) : null
+            }
             options={blocos.map((b) => ({
-              value: b.name,
+              value: String(b.id), // 🔹 CardBloco trabalha com string
               label: `${b.name}   ${b.count}/${b.max} questões`,
             }))}
-            onSelect={(novoBloco) => setBlocoSelecionado(novoBloco)}
+            onSelect={(novoValor) => {
+              const id = Number(novoValor);
+              setBlocoSelecionadoId(Number.isNaN(id) ? null : id);
+            }}
             allowCreateNew
             onPressCreateNew={handlePressCriarNovoBloco}
             containerStyle={{ marginBottom: 12 }}
@@ -304,7 +369,7 @@ export default function CriarQuestoes() {
               <Text style={styles.newBlockLabel}>Nome do novo bloco</Text>
               <TextInput
                 style={styles.newBlockInput}
-                placeholder="Ex: Bloco 6"
+                placeholder="Ex: Atividade 2"
                 placeholderTextColor="rgba(255,255,255,0.6)"
                 value={novoNomeBloco}
                 onChangeText={setNovoNomeBloco}
