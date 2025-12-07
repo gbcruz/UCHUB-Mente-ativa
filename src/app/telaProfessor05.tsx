@@ -28,17 +28,13 @@ type Question = {
   alternativas: string[];
   indiceCorreta?: number;
   explicacao?: string;
-
-  // 🔹 campos "antigos" e "novos" convivendo:
   turma?: number;
   turmaId?: number;
   materiaId?: number;
-
   autorId?: number;
   dificuldade?: string;
-
-  blocosId?: number; // 🔹 NOVO: id do bloco (modelo novo)
-  bloco?: string; // 🔹 ainda deixei por compatibilidade com o modelo antigo
+  blocosId?: number;
+  bloco?: string; 
 };
 
 // blocos vindos da API
@@ -49,7 +45,7 @@ type BlockFromAPI = {
   materiaId?: number;
 };
 
-// estrutura de blocos na UI (conta quantas questões tem em cada bloco)
+// estrutura de blocos na interface
 type BlockInfo = {
   id: number;
   name: string;
@@ -121,7 +117,7 @@ export default function TelaProfessor05() {
   const [indiceCorreta, setIndiceCorreta] = useState<number | null>(null);
   const [saving, setSaving] = useState(false);
 
-  // 🔹 blocos da UI
+  // blocos da Interface
   const [blocos, setBlocos] = useState<BlockInfo[]>([]);
   const [blocoSelecionadoId, setBlocoSelecionadoId] = useState<number | null>(
     null
@@ -133,7 +129,7 @@ export default function TelaProfessor05() {
     alternativas: string[];
     indiceCorreta: number | null;
     explicacao: string;
-    blocosId: number | null; // 🔹 agora também rastreia o bloco inicial
+    blocosId: number | null; 
   } | null>(null);
 
   // Detecta se houve qualquer alteração
@@ -150,7 +146,6 @@ export default function TelaProfessor05() {
 
     if (initial.explicacao !== explicacao) return true;
 
-    // 🔹 se o bloco mudou, também considera "sujo"
     if (initial.blocosId !== blocoSelecionadoId) return true;
 
     return false;
@@ -160,7 +155,7 @@ export default function TelaProfessor05() {
     alternativas,
     indiceCorreta,
     explicacao,
-    blocoSelecionadoId, // 🔹 dependência adicionada
+    blocoSelecionadoId, 
   ]);
 
   // Atualizar alternativa específica
@@ -198,7 +193,7 @@ export default function TelaProfessor05() {
 
     const exp = q.explicacao ?? "";
 
-    // 🔹 tenta achar o blocoId; se não existir, deixa null
+
     const blocosId =
       typeof q.blocosId === "number" ? q.blocosId : null;
 
@@ -206,26 +201,24 @@ export default function TelaProfessor05() {
     setAlternativas(alt);
     setIndiceCorreta(idxCorreta);
     setExplicacao(exp);
-    setBlocoSelecionadoId(blocosId); // 🔹 seta o bloco atual
+    setBlocoSelecionadoId(blocosId); 
 
     setInitial({
       enunciado: enun,
       alternativas: [...alt],
       indiceCorreta: idxCorreta,
       explicacao: exp,
-      blocosId, // 🔹 salva estado inicial do bloco
+      blocosId, 
     });
   };
 
   /* ---------------------- CARREGAR BLOCOS / CONTAGEM ---------------------- */
 
-  // sempre que a questão for carregada, buscamos os blocos daquela turma/matéria
   useEffect(() => {
     if (!selectedQuestion) return;
 
     const carregarBlocos = async () => {
       try {
-        // 🔹 aceita tanto turmaId novo quanto turma "antigo"
         const turmaId =
           typeof selectedQuestion.turmaId === "number"
             ? selectedQuestion.turmaId
@@ -306,7 +299,6 @@ export default function TelaProfessor05() {
       return;
     }
 
-    // 🔹 agora o bloco também é obrigatório
     if (blocoSelecionadoId == null) {
       Alert.alert("Atenção", "Selecione o bloco da questão.");
       return;
@@ -320,7 +312,7 @@ export default function TelaProfessor05() {
         alternativas: alternativasTrim,
         indiceCorreta: indiceCorreta,
         explicacao: explicacao.trim(),
-        blocosId: blocoSelecionadoId, // 🔹 salva o id do bloco
+        blocosId: blocoSelecionadoId,
       };
 
       await updateQuestion(payload);
@@ -330,7 +322,7 @@ export default function TelaProfessor05() {
         alternativas: [...alternativasTrim],
         indiceCorreta: payload.indiceCorreta ?? 0,
         explicacao: payload.explicacao ?? "",
-        blocosId: payload.blocosId ?? null, // 🔹 atualiza estado inicial
+        blocosId: payload.blocosId ?? null, 
       });
 
       setSelectedQuestion(payload);
@@ -388,7 +380,7 @@ export default function TelaProfessor05() {
       setIndiceCorreta(null);
       setExplicacao("");
       setInitial(null);
-      setBlocoSelecionadoId(null); // 🔹 limpa bloco também
+      setBlocoSelecionadoId(null); 
 
       Alert.alert("Sucesso", "Questão apagada com sucesso.");
     } catch (e: any) {
@@ -446,7 +438,7 @@ export default function TelaProfessor05() {
         >
           <Text style={styles.screenTitle}>Editar Questões</Text>
 
-          {/* 🔹 CARD BLOCO IGUAL NA TELA DE CRIAR */}
+          {/*CARD BLOCO IGUAL NA TELA DE CRIAR */}
           <CardBloco
             label="Bloco da questão"
             placeholder="Selecione o bloco"

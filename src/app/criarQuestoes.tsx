@@ -29,9 +29,9 @@ type NewQuestion = {
   indiceCorreta: number;
   explicacao?: string;
   blocosId: number;      // 🔹 relação com a tabela blocos
-  materiaId?: number;    // 🔹 opcional, mas alinhado com JSON
-  turmaId?: number;      // 🔹 opcional, mas alinhado com JSON
-  autorId?: number;      // se você usar depois
+  materiaId?: number;    
+  turmaId?: number;      
+  autorId?: number;      
 };
 
 // Estrutura dos blocos vindos da API
@@ -53,14 +53,13 @@ type BlockInfo = {
 // Tipagem da questão vinda da API (usada só pra contar por bloco)
 type QuestionFromAPI = {
   id: number;
-  blocosId?: number; // 🔹 novo modelo
-  bloco?: string;    // 🔹 casos antigos no banco que ainda usam string
+  blocosId?: number;
+  bloco?: string;    
 };
 
 export default function CriarQuestoes() {
   const router = useRouter();
 
-  // 🔹 Agora esperamos que a navegação envie autorId, turmaId e materiaId
   const params = useLocalSearchParams<{
     autorId?: string;
     turmaId?: string;
@@ -84,10 +83,8 @@ export default function CriarQuestoes() {
   ]);
   const [explicacao, setExplicacao] = useState("");
 
-  // 🔹 blocos vêm da API, então começamos com array vazio
   const [blocos, setBlocos] = useState<BlockInfo[]>([]);
 
-  // 🔹 guardamos o ID do bloco selecionado
   const [blocoSelecionadoId, setBlocoSelecionadoId] = useState<number | null>(
     null
   );
@@ -110,7 +107,7 @@ export default function CriarQuestoes() {
         const queryString =
           paramsQuery.length > 0 ? `?${paramsQuery.join("&")}` : "";
 
-        // 🔹 1) Buscar blocos cadastrados
+        // 1) Buscar blocos cadastrados
         const resBlocos = await fetch(`${API_BASE_URL}/blocos${queryString}`);
         if (!resBlocos.ok) {
           console.log("Erro ao carregar blocos");
@@ -118,7 +115,7 @@ export default function CriarQuestoes() {
         }
         const blocosApi: BlockFromAPI[] = await resBlocos.json();
 
-        // 🔹 2) Buscar perguntas para contar quantas existem por bloco
+        // 2) Buscar perguntas para contar quantas existem por bloco
         const resPerguntas = await fetch(
           `${API_BASE_URL}/perguntas${queryString}`
         );
@@ -261,7 +258,7 @@ export default function CriarQuestoes() {
       return;
     }
 
-    // 🔹 monta payload no formato do JSON-server
+    // monta payload no formato do JSON-server
     const payload: NewQuestion = {
       enunciado: enunciado.trim(),
       alternativas: alternativasTrim,
@@ -343,11 +340,10 @@ export default function CriarQuestoes() {
           contentContainerStyle={styles.content}
           keyboardShouldPersistTaps="handled"
         >
-          {/* CARD BLOCO - AGORA VINDO DO REPLIT */}
+          {/* CARD BLOCO */}
           <CardBloco
             label="Selecione o bloco"
             placeholder="Selecione o bloco"
-            // 🔹 value do CardBloco é string – usamos o ID convertido
             value={
               blocoSelecionadoId != null ? String(blocoSelecionadoId) : null
             }
