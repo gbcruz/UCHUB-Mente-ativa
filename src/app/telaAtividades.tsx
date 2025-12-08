@@ -21,36 +21,54 @@ type Bloco = {
 };
 
 export default function TelaAtividades() {
-  const { materiaId, materiaNome } = useLocalSearchParams<{
-    materiaId?: string;
-    materiaNome?: string;
-  }>();
+  const { materiaId, materiaNome, usuario: usuarioParam } =
+    useLocalSearchParams<{
+      materiaId?: string;
+      materiaNome?: string;
+      usuario?: string;
+    }>();
+
+  // tenta reconstruir o usuário (aluno)
+  let usuario: any = null;
+  try {
+    usuario = usuarioParam ? JSON.parse(usuarioParam as string) : null;
+  } catch (e) {
+    console.warn("Erro ao fazer parse de usuario em TelaAtividades:", e);
+  }
+
+  // turma do aluno; se não vier, usa 4 (admin) como fallback p/ não quebrar
+  const TURMA_ID = usuario?.turmaId ?? 4;
 
   const [atividades, setAtividades] = useState<Bloco[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // turma fixa (depois você pega do aluno logado)
-  const TURMA_ID = 4;
-
   useEffect(() => {
     const carregarAtividades = async () => {
       try {
+        console.log("TelaAtividades params:", {
+          materiaId,
+          materiaNome,
+          usuarioParam,
+          usuario,
+          TURMA_ID,
+        });
+
         if (!materiaId) {
           console.warn("Nenhum materiaId recebido em TelaAtividades");
           setAtividades([]);
+          setLoading(false);
           return;
         }
 
         const materiaIdNumber = Number(materiaId);
 
-        // 🔥 JÁ FILTRA NA API PELO json-server
-        // Vai bater em algo tipo:  /blocos?materiaId=1&turmaId=4
-        const url = `${API_KEY}/blocos?materiaId=${materiaIdNumber}&turmaId=${TURMA_ID}`;
+        // 1) busca TODOS os blocos dessa matéria
+        const url = `${API_KEY}/blocos?materiaId=${materiaIdNumber}`;
         console.log("Buscando blocos em:", url);
 
         const response = await fetch(url);
         const data = await response.json();
-        console.log("Resposta /blocos filtrados na API:", data);
+        console.log("Resposta /blocos (bruto):", data);
 
         let lista: Bloco[] = [];
 
@@ -62,7 +80,13 @@ export default function TelaAtividades() {
           console.warn("Formato inesperado da API de blocos:", data);
         }
 
-        setAtividades(lista);
+        // 2) filtra APENAS blocos da turma do aluno
+        const filtrados = lista.filter(
+          (b) => Number(b.turmaId) === Number(TURMA_ID)
+        );
+        console.log("Blocos após filtro por turma:", filtrados);
+
+        setAtividades(filtrados);
       } catch (error) {
         console.error("Erro ao buscar atividades:", error);
         setAtividades([]);
@@ -72,24 +96,23 @@ export default function TelaAtividades() {
     };
 
     carregarAtividades();
-  }, [materiaId]);
+  }, [materiaId, usuarioParam]);
 
   const naoTemAtividades = !loading && atividades.length === 0;
 
   return (
     <Gradient>
-      {/* TOPO */}
-      <View style={styles.header}>
+      {/* TOPO – igual estrutura da tela de Matérias */}
+      <View style={styles.topContainer}>
         <TouchableOpacity onPress={() => router.back()}>
           <IconBack />
         </TouchableOpacity>
-
-        <Text style={styles.title}>
-          {materiaNome ? `Atividades de ${materiaNome}` : "Atividades"}
-        </Text>
-
-        <View style={{ width: 38 }} />
       </View>
+
+      {/* TÍTULO – alinhado com o "Matérias" */}
+      <Text style={styles.title}>
+        {materiaNome ? `Atividades de ${materiaNome}` : "Atividades"}
+      </Text>
 
       {/* CONTEÚDO */}
       {loading ? (
@@ -106,7 +129,7 @@ export default function TelaAtividades() {
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
         >
-          {atividades.slice(0, 8).map((bloco) => (
+          {atividades.map((bloco) => (
             <View key={bloco.id} style={styles.itemWrapper}>
               <MateriaButton
                 nome={bloco.nome}
@@ -116,6 +139,7 @@ export default function TelaAtividades() {
                     params: {
                       blocoId: String(bloco.id),
                       blocoNome: bloco.nome,
+                      usuario: usuarioParam,
                     },
                   })
                 }
@@ -129,25 +153,25 @@ export default function TelaAtividades() {
 }
 
 const styles = StyleSheet.create({
-  header: {
-    marginTop: 40,
+  // topo alinhado com a tela de Matérias
+  topContainer: {
     width: "100%",
-    flexDirection: "row",
-    justifyContent: "space-between",
+    alignItems: "flex-start",
     paddingHorizontal: 20,
-    alignItems: "center",
+    marginTop: 40,
+    marginBottom: 20,
   },
   title: {
     color: "#fff",
-    fontSize: 20,
+    fontSize: 26,
     fontWeight: "bold",
     textAlign: "center",
-    flex: 1,
+    marginBottom: 10,
   },
   scrollArea: {
     flex: 1,
     width: "100%",
-    marginTop: 20,
+    marginTop: 10,
   },
   scrollContent: {
     alignItems: "center",

@@ -29,11 +29,16 @@ interface Questao {
 }
 
 export default function TelaQuestoes() {
-  // 🔹 pega blocoId e blocoNome da navegação
-  const { blocoId, blocoNome } = useLocalSearchParams<{
-    blocoId?: string;
-    blocoNome?: string;
-  }>();
+  // pega blocoId, blocoNome e (opcionalmente) usuario
+  const { blocoId, blocoNome, usuario: usuarioParam } =
+    useLocalSearchParams<{
+      blocoId?: string;
+      blocoNome?: string;
+      usuario?: string;
+    }>();
+
+  const usuario = usuarioParam ? JSON.parse(usuarioParam as string) : null;
+  const TURMA_ID = usuario?.turmaId ?? null;
 
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [showExplanation, setShowExplanation] = useState(false);
@@ -42,11 +47,11 @@ export default function TelaQuestoes() {
   const [showResults, setShowResults] = useState(false);
 
   const [questions, setQuestions] = useState<Questao[]>([]);
-  const [answers, setAnswers] = useState<(string | null)[]>([]); // respostas armazenadas
+  const [answers, setAnswers] = useState<(string | null)[]>([]);
   const [loading, setLoading] = useState(true);
   const [postingResults, setPostingResults] = useState(false);
 
-  // Animações
+  // animações
   const slideAnim = useRef(new Animated.Value(0)).current;
   const barAnim = useRef(new Animated.Value(0)).current;
   const modalAnim = useRef(new Animated.Value(0)).current;
@@ -57,21 +62,23 @@ export default function TelaQuestoes() {
   // ==============================
   async function carregarQuestoes() {
     try {
-      // se não veio blocoId, não faz requisição
       if (!blocoId) {
         console.warn("Nenhum blocoId recebido em TelaQuestoes");
         setQuestions([]);
         setAnswers([]);
+        setLoading(false);
         return;
       }
 
       setLoading(true);
 
-      // 🔥 busca só perguntas deste bloco
-      const response = await fetch(
-        `${API_KEY}/perguntas?blocosId=${Number(blocoId)}`
-      );
+      // 👉 BUSCA APENAS POR BLOCO, sem turma
+      const url = `${API_KEY}/perguntas?blocosId=${Number(blocoId)}`;
+      console.log("Buscando perguntas em:", url);
+
+      const response = await fetch(url);
       const json = await response.json();
+      console.log("Resposta /perguntas:", json);
 
       if (!Array.isArray(json)) {
         console.warn("Formato inesperado de /perguntas", json);
@@ -97,7 +104,7 @@ export default function TelaQuestoes() {
       });
 
       setQuestions(adaptadas);
-      setAnswers(new Array(adaptadas.length).fill(null)); // nenhuma respondida ainda
+      setAnswers(new Array(adaptadas.length).fill(null));
       setCurrentQuestionIndex(0);
     } catch (error) {
       console.error("Erro ao carregar perguntas:", error);
@@ -114,7 +121,6 @@ export default function TelaQuestoes() {
 
   const totalQuestions = questions.length;
   const currentQuestion = questions[currentQuestionIndex];
-  const selectedOption = answers[currentQuestionIndex];
 
   // ====== SLIDE ======
   function animateSlide(toLeft = true) {
@@ -128,26 +134,31 @@ export default function TelaQuestoes() {
 
   // ====== SELECT ======
   function handleSelect(option: string) {
-    // impede de responder de novo
     if (answers[currentQuestionIndex]) return;
 
-    // salva a escolha
     setAnswers((prev) => {
       const copy = [...prev];
       copy[currentQuestionIndex] = option;
       return copy;
     });
 
-    // só anima a ALTERNATIVA CORRETA
     if (option === currentQuestion.correctAnswer) {
       Animated.sequence([
-        Animated.timing(correctAnim, { toValue: 1.15, duration: 180, useNativeDriver: true }),
-        Animated.timing(correctAnim, { toValue: 1, duration: 180, useNativeDriver: true }),
+        Animated.timing(correctAnim, {
+          toValue: 1.15,
+          duration: 180,
+          useNativeDriver: true,
+        }),
+        Animated.timing(correctAnim, {
+          toValue: 1,
+          duration: 180,
+          useNativeDriver: true,
+        }),
       ]).start();
     }
   }
 
-  // ====== NAVIGATION ======
+  // ====== NAV ======
   function goToNextQuestion() {
     if (currentQuestionIndex < totalQuestions - 1) {
       animateSlide(true);
@@ -162,7 +173,7 @@ export default function TelaQuestoes() {
     }
   }
 
-  // ====== MODAIS ANIMADOS ======
+  // ====== MODAIS ======
   const openModal = (setter: React.Dispatch<React.SetStateAction<boolean>>) => {
     setter(true);
     modalAnim.setValue(0);
@@ -198,9 +209,6 @@ export default function TelaQuestoes() {
 
   const allAnswered = answers.length > 0 && answers.every((a) => a !== null);
 
-  // ==============================
-  //   SUBMIT RESULTADOS
-  // ==============================
   async function submitResults() {
     if (!totalQuestions) return;
     try {
@@ -210,6 +218,7 @@ export default function TelaQuestoes() {
         totalCorrect,
         accuracy,
         blocoId: blocoId ? Number(blocoId) : null,
+        turmaId: TURMA_ID ?? null,
         timestamp: new Date().toISOString(),
       };
       await fetch(`${API_KEY}/resultados`, {
@@ -270,7 +279,14 @@ export default function TelaQuestoes() {
   if (!loading && totalQuestions === 0) {
     return (
       <Gradient>
-        <View style={{ flex: 1, justifyContent: "center", alignItems: "center", padding: 24 }}>
+        <View
+          style={{
+            flex: 1,
+            justifyContent: "center",
+            alignItems: "center",
+            padding: 24,
+          }}
+        >
           <Text style={{ color: "#fff", fontSize: 18, textAlign: "center" }}>
             Nenhuma questão encontrada para este bloco.
           </Text>
@@ -294,7 +310,7 @@ export default function TelaQuestoes() {
 
   return (
     <Gradient>
-      {/* ====== HEADER ====== */}
+      {/* HEADER */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => openModal(setShowExitConfirm)}>
           <Text style={styles.exitButton}>Sair</Text>
@@ -316,7 +332,7 @@ export default function TelaQuestoes() {
         </TouchableOpacity>
       </View>
 
-      {/* ====== PROGRESS BAR ====== */}
+      {/* PROGRESSO */}
       <View style={styles.progressContainer}>
         <Animated.View
           style={[
@@ -331,9 +347,12 @@ export default function TelaQuestoes() {
         />
       </View>
 
-      {/* ====== QUESTION CARD ====== */}
+      {/* QUESTÃO + ALTERNATIVAS */}
       <Animated.View
-        style={[styles.slideContainer, { transform: [{ translateX: slideAnim }] }]}
+        style={[
+          styles.slideContainer,
+          { transform: [{ translateX: slideAnim }] },
+        ]}
       >
         {currentQuestion && <QuestionCard question={currentQuestion.question} />}
 
@@ -341,11 +360,13 @@ export default function TelaQuestoes() {
           {currentQuestion?.options?.map((option, index) => {
             let color = "#9C6CFF";
             if (answers[currentQuestionIndex]) {
-              color = option === currentQuestion.correctAnswer ? "#4CAF50" : "#E53935";
+              color =
+                option === currentQuestion.correctAnswer ? "#4CAF50" : "#E53935";
             }
 
             const scaleValue =
-              answers[currentQuestionIndex] && option === currentQuestion.correctAnswer
+              answers[currentQuestionIndex] &&
+              option === currentQuestion.correctAnswer
                 ? correctAnim
                 : 1;
 
@@ -372,7 +393,7 @@ export default function TelaQuestoes() {
         </View>
       </Animated.View>
 
-      {/* ====== NAVIGATION ====== */}
+      {/* NAV BOTTOM */}
       <View style={styles.bottomNav}>
         {currentQuestionIndex > 0 ? (
           <TouchableOpacity onPress={goToPreviousQuestion}>
@@ -409,19 +430,16 @@ export default function TelaQuestoes() {
         )}
       </View>
 
-      {/* ====== MODALS ====== */}
+      {/* MODAIS */}
 
-      {/* SAIR */}
+      {/* sair */}
       {showExitConfirm && (
         <Modal transparent visible>
           <View style={styles.modalOverlay}>
             <Animated.View
               style={[
                 styles.modalBox,
-                {
-                  opacity: modalAnim,
-                  transform: [{ scale: modalAnim }],
-                },
+                { opacity: modalAnim, transform: [{ scale: modalAnim }] },
               ]}
             >
               <Text style={styles.modalTitle}>Deseja realmente sair?</Text>
@@ -432,6 +450,7 @@ export default function TelaQuestoes() {
                 >
                   <Text style={styles.closeText}>Cancelar</Text>
                 </TouchableOpacity>
+
                 <TouchableOpacity
                   style={[styles.exitBtn, { backgroundColor: "#4CAF50" }]}
                   onPress={() => {
@@ -447,17 +466,14 @@ export default function TelaQuestoes() {
         </Modal>
       )}
 
-      {/* EXPLICAÇÃO */}
+      {/* explicação */}
       {showExplanation && currentQuestion && (
         <Modal transparent visible>
           <View style={styles.modalOverlay}>
             <Animated.View
               style={[
                 styles.modalBox,
-                {
-                  opacity: modalAnim,
-                  transform: [{ scale: modalAnim }],
-                },
+                { opacity: modalAnim, transform: [{ scale: modalAnim }] },
               ]}
             >
               <Text style={styles.modalTitle}>Explicação:</Text>
@@ -473,7 +489,7 @@ export default function TelaQuestoes() {
         </Modal>
       )}
 
-      {/* SELETOR DE QUESTÕES */}
+      {/* seletor de questões */}
       {showQuestionSelector && (
         <Modal transparent visible>
           <View style={styles.modalOverlay}>
@@ -512,7 +528,7 @@ export default function TelaQuestoes() {
         </Modal>
       )}
 
-      {/* RESULTADO FINAL */}
+      {/* resultado final */}
       {showResults && (
         <Modal transparent visible>
           <View style={styles.modalOverlay}>
@@ -526,7 +542,9 @@ export default function TelaQuestoes() {
               <Text style={styles.modalText}>
                 Você acertou {totalCorrect} de {totalQuestions} questões.
               </Text>
-              <Text style={[styles.modalText, { fontWeight: "bold", marginTop: 8 }]}>
+              <Text
+                style={[styles.modalText, { fontWeight: "bold", marginTop: 8 }]}
+              >
                 Aproveitamento: {accuracy}%
               </Text>
 
@@ -661,7 +679,12 @@ const styles = StyleSheet.create({
     marginBottom: 15,
     textAlign: "center",
   },
-  modalText: { fontSize: 15, color: "#2D0C57", textAlign: "center", marginBottom: 6 },
+  modalText: {
+    fontSize: 15,
+    color: "#2D0C57",
+    textAlign: "center",
+    marginBottom: 6,
+  },
   closeButton: {
     backgroundColor: "#9C6CFF",
     borderRadius: 10,

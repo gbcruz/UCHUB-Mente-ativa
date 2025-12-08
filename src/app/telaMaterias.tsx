@@ -1,7 +1,7 @@
 import { MateriaButton } from "@/components/materiaButton";
 import { API_KEY } from "@/utils/apiKey";
 import { Gradient } from "@/utils/styles/background";
-import { router } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import React, { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
@@ -14,7 +14,6 @@ import {
   View,
 } from "react-native";
 
-// 🔥 TIPAGEM DA API
 interface Materia {
   id: number;
   nome: string;
@@ -26,6 +25,11 @@ export default function TelaMaterias() {
   const [loading, setLoading] = useState(true);
 
   const fadeAnim = useRef(new Animated.Value(0)).current;
+
+  // ✅ RECEBE O USUÁRIO DO LOGIN
+  const params = useLocalSearchParams<{ usuario?: string }>();
+  const usuarioParam = params.usuario; // string JSON
+  const usuario = usuarioParam ? JSON.parse(usuarioParam) : null;
 
   const openExitModal = () => {
     setShowExitConfirm(true);
@@ -90,6 +94,8 @@ export default function TelaMaterias() {
                   params: {
                     materiaId: String(materia.id),
                     materiaNome: materia.nome,
+                    // ✅ REPASSA O MESMO USUÁRIO
+                    usuario: usuarioParam,
                   },
                 })
               }
@@ -97,7 +103,7 @@ export default function TelaMaterias() {
           ))}
       </View>
 
-      {/* POP-UP */}
+      {/* POP-UP SAIR */}
       <Modal transparent visible={showExitConfirm} animationType="none">
         <View style={styles.modalOverlay}>
           <Animated.View
