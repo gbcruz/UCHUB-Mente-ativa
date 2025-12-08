@@ -1,11 +1,13 @@
 import IconBack from "@/components/icons/iconBack";
 import IconNext from "@/components/icons/iconNext";
 import { QuestionCard } from "@/components/questionCard";
+import { API_KEY } from "@/utils/apiKey";
 import { ROUTES } from "@/utils/routes";
 import { Gradient } from "@/utils/styles/background";
-import { router } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import React, { useEffect, useRef, useState } from "react";
 import {
+  ActivityIndicator,
   Animated,
   Dimensions,
   Easing,
@@ -18,33 +20,101 @@ import {
 
 const SCREEN_WIDTH = Dimensions.get("window").width;
 
+interface Questao {
+  id: number;
+  question: string;
+  options: string[];
+  correctAnswer: string;
+  explanation: string;
+}
+
 export default function TelaQuestoes() {
+  // 🔹 pega blocoId e blocoNome da navegação
+  const { blocoId, blocoNome } = useLocalSearchParams<{
+    blocoId?: string;
+    blocoNome?: string;
+  }>();
+
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
-  const [selectedOption, setSelectedOption] = useState<string | null>(null);
   const [showExplanation, setShowExplanation] = useState(false);
   const [showExitConfirm, setShowExitConfirm] = useState(false);
   const [showQuestionSelector, setShowQuestionSelector] = useState(false);
+  const [showResults, setShowResults] = useState(false);
+
+  const [questions, setQuestions] = useState<Questao[]>([]);
+  const [answers, setAnswers] = useState<(string | null)[]>([]); // respostas armazenadas
+  const [loading, setLoading] = useState(true);
+  const [postingResults, setPostingResults] = useState(false);
 
   // Animações
   const slideAnim = useRef(new Animated.Value(0)).current;
   const barAnim = useRef(new Animated.Value(0)).current;
-  const buttonAnim = useRef(new Animated.Value(1)).current;
   const modalAnim = useRef(new Animated.Value(0)).current;
+  const correctAnim = useRef(new Animated.Value(1)).current;
 
-  const questions = [
-    { id: 1, question: "Se 3 cadernos custam R$18, quanto custarão 5?", options: ["25", "28", "30", "35", "40"], correctAnswer: "30", explanation: "Cada caderno custa R$6. 5 × 6 = R$30." },
-    { id: 2, question: "Se 2 maçãs custam R$6, quanto custarão 5?", options: ["10", "12", "15", "18", "20"], correctAnswer: "15", explanation: "Cada maçã custa R$3. 5 × 3 = R$15." },
-    { id: 3, question: "Qual é o resultado de 12 ÷ 3 × 2?", options: ["6", "8", "4", "10", "12"], correctAnswer: "8", explanation: "12 ÷ 3 = 4, 4 × 2 = 8." },
-    { id: 4, question: "Qual é o resultado de 9 + 6 ÷ 3?", options: ["3", "5", "11", "13", "15"], correctAnswer: "11", explanation: "6 ÷ 3 = 2, então 9 + 2 = 11." },
-    { id: 5, question: "Se uma pizza tem 8 fatias e você come 3, quanto resta?", options: ["4", "5", "3", "2", "1"], correctAnswer: "5", explanation: "8 - 3 = 5 fatias restantes." },
-    { id: 6, question: "Qual é o quadrado de 7?", options: ["14", "21", "42", "49", "56"], correctAnswer: "49", explanation: "7 × 7 = 49." },
-    { id: 7, question: "Quanto é 15% de 200?", options: ["10", "20", "25", "30", "40"], correctAnswer: "30", explanation: "15% = 0.15. 0.15 × 200 = 30." },
-    { id: 8, question: "Qual é a capital da França?", options: ["Roma", "Paris", "Londres", "Berlim", "Madri"], correctAnswer: "Paris", explanation: "A capital da França é Paris." },
-    { id: 9, question: "Qual destes animais é um mamífero?", options: ["Tubarão", "Golfinho", "Peixe", "Sapo", "Pinguim"], correctAnswer: "Golfinho", explanation: "O golfinho é um mamífero aquático." },
-    { id: 10, question: "Qual é o planeta mais próximo do Sol?", options: ["Terra", "Vênus", "Marte", "Mercúrio", "Júpiter"], correctAnswer: "Mercúrio", explanation: "Mercúrio é o planeta mais próximo do Sol." },
-  ];
+  // ==============================
+  //        BUSCA NA API
+  // ==============================
+  async function carregarQuestoes() {
+    try {
+      // se não veio blocoId, não faz requisição
+      if (!blocoId) {
+        console.warn("Nenhum blocoId recebido em TelaQuestoes");
+        setQuestions([]);
+        setAnswers([]);
+        return;
+      }
 
+      setLoading(true);
+
+      // 🔥 busca só perguntas deste bloco
+      const response = await fetch(
+        `${API_KEY}/perguntas?blocosId=${Number(blocoId)}`
+      );
+      const json = await response.json();
+
+      if (!Array.isArray(json)) {
+        console.warn("Formato inesperado de /perguntas", json);
+        setQuestions([]);
+        setAnswers([]);
+        return;
+      }
+
+      const adaptadas: Questao[] = json.map((p: any) => {
+        const options: string[] = p.alternativas || [];
+        const correct =
+          typeof p.indiceCorreta === "number" && options[p.indiceCorreta]
+            ? options[p.indiceCorreta]
+            : "";
+
+        return {
+          id: p.id,
+          question: p.enunciado ?? "",
+          options,
+          correctAnswer: correct,
+          explanation: p.explicacao ?? "",
+        };
+      });
+
+      setQuestions(adaptadas);
+      setAnswers(new Array(adaptadas.length).fill(null)); // nenhuma respondida ainda
+      setCurrentQuestionIndex(0);
+    } catch (error) {
+      console.error("Erro ao carregar perguntas:", error);
+      setQuestions([]);
+      setAnswers([]);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    carregarQuestoes();
+  }, [blocoId]);
+
+  const totalQuestions = questions.length;
   const currentQuestion = questions[currentQuestionIndex];
+  const selectedOption = answers[currentQuestionIndex];
 
   // ====== SLIDE ======
   function animateSlide(toLeft = true) {
@@ -58,29 +128,30 @@ export default function TelaQuestoes() {
 
   // ====== SELECT ======
   function handleSelect(option: string) {
-    if (selectedOption) return;
-    setSelectedOption(option);
-    Animated.sequence([
-      Animated.timing(buttonAnim, { toValue: 0.9, duration: 120, useNativeDriver: true }),
-      Animated.timing(buttonAnim, { toValue: 1, duration: 120, useNativeDriver: true }),
-    ]).start();
-  }
+    // impede de responder de novo
+    if (answers[currentQuestionIndex]) return;
 
-  // ====== PROGRESS ======
-  useEffect(() => {
-    Animated.timing(barAnim, {
-      toValue: (currentQuestionIndex + 1) / questions.length,
-      duration: 500,
-      useNativeDriver: false,
-    }).start();
-  }, [currentQuestionIndex]);
+    // salva a escolha
+    setAnswers((prev) => {
+      const copy = [...prev];
+      copy[currentQuestionIndex] = option;
+      return copy;
+    });
+
+    // só anima a ALTERNATIVA CORRETA
+    if (option === currentQuestion.correctAnswer) {
+      Animated.sequence([
+        Animated.timing(correctAnim, { toValue: 1.15, duration: 180, useNativeDriver: true }),
+        Animated.timing(correctAnim, { toValue: 1, duration: 180, useNativeDriver: true }),
+      ]).start();
+    }
+  }
 
   // ====== NAVIGATION ======
   function goToNextQuestion() {
-    if (currentQuestionIndex < questions.length - 1) {
+    if (currentQuestionIndex < totalQuestions - 1) {
       animateSlide(true);
       setCurrentQuestionIndex((i) => i + 1);
-      setSelectedOption(null);
     }
   }
 
@@ -88,11 +159,10 @@ export default function TelaQuestoes() {
     if (currentQuestionIndex > 0) {
       animateSlide(false);
       setCurrentQuestionIndex((i) => i - 1);
-      setSelectedOption(null);
     }
   }
 
-  // ====== ANIMATED MODAL OPEN/CLOSE ======
+  // ====== MODAIS ANIMADOS ======
   const openModal = (setter: React.Dispatch<React.SetStateAction<boolean>>) => {
     setter(true);
     modalAnim.setValue(0);
@@ -113,6 +183,115 @@ export default function TelaQuestoes() {
     }).start(() => setter(false));
   };
 
+  // ==============================
+  //      RESULTADO FINAL
+  // ==============================
+  const totalCorrect = answers.reduce((acc, answer, index) => {
+    if (!answer) return acc;
+    const q = questions[index];
+    if (!q) return acc;
+    return acc + (answer === q.correctAnswer ? 1 : 0);
+  }, 0);
+
+  const accuracy =
+    totalQuestions > 0 ? Math.round((totalCorrect / totalQuestions) * 100) : 0;
+
+  const allAnswered = answers.length > 0 && answers.every((a) => a !== null);
+
+  // ==============================
+  //   SUBMIT RESULTADOS
+  // ==============================
+  async function submitResults() {
+    if (!totalQuestions) return;
+    try {
+      setPostingResults(true);
+      const payload = {
+        totalQuestions,
+        totalCorrect,
+        accuracy,
+        blocoId: blocoId ? Number(blocoId) : null,
+        timestamp: new Date().toISOString(),
+      };
+      await fetch(`${API_KEY}/resultados`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+    } catch (err) {
+      console.warn("Erro ao enviar resultado:", err);
+    } finally {
+      setPostingResults(false);
+    }
+  }
+
+  // auto-abrir resultado na última questão
+  useEffect(() => {
+    if (!totalQuestions) return;
+    if (currentQuestionIndex === totalQuestions - 1 && allAnswered) {
+      setShowResults(true);
+      submitResults();
+    }
+  }, [answers, currentQuestionIndex, totalQuestions]);
+
+  useEffect(() => {
+    if (showResults) {
+      modalAnim.setValue(0);
+      Animated.timing(modalAnim, {
+        toValue: 1,
+        duration: 250,
+        easing: Easing.out(Easing.ease),
+        useNativeDriver: true,
+      }).start();
+    }
+  }, [showResults]);
+
+  // barra de progresso
+  useEffect(() => {
+    Animated.timing(barAnim, {
+      toValue: totalQuestions ? (currentQuestionIndex + 1) / totalQuestions : 0,
+      duration: 500,
+      useNativeDriver: false,
+    }).start();
+  }, [currentQuestionIndex, totalQuestions]);
+
+  // ==============================
+  //      ESTADOS ESPECIAIS
+  // ==============================
+  if (loading) {
+    return (
+      <Gradient>
+        <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
+          <ActivityIndicator size="large" color="#fff" />
+        </View>
+      </Gradient>
+    );
+  }
+
+  if (!loading && totalQuestions === 0) {
+    return (
+      <Gradient>
+        <View style={{ flex: 1, justifyContent: "center", alignItems: "center", padding: 24 }}>
+          <Text style={{ color: "#fff", fontSize: 18, textAlign: "center" }}>
+            Nenhuma questão encontrada para este bloco.
+          </Text>
+          <TouchableOpacity
+            style={{
+              marginTop: 16,
+              paddingHorizontal: 16,
+              paddingVertical: 8,
+              borderRadius: 8,
+              borderWidth: 1,
+              borderColor: "#fff",
+            }}
+            onPress={() => router.back()}
+          >
+            <Text style={{ color: "#fff" }}>Voltar</Text>
+          </TouchableOpacity>
+        </View>
+      </Gradient>
+    );
+  }
+
   return (
     <Gradient>
       {/* ====== HEADER ====== */}
@@ -122,7 +301,9 @@ export default function TelaQuestoes() {
         </TouchableOpacity>
 
         <View pointerEvents="none" style={styles.centerTitle}>
-          <Text style={styles.activityTitle}>ATV 1</Text>
+          <Text style={styles.activityTitle}>
+            {blocoNome ? blocoNome : "Atividade"}
+          </Text>
         </View>
 
         <TouchableOpacity
@@ -130,7 +311,7 @@ export default function TelaQuestoes() {
           onPress={() => openModal(setShowQuestionSelector)}
         >
           <Text style={styles.questionCount}>
-            Q{currentQuestionIndex + 1}/{questions.length}
+            Q{currentQuestionIndex + 1}/{totalQuestions}
           </Text>
         </TouchableOpacity>
       </View>
@@ -154,23 +335,34 @@ export default function TelaQuestoes() {
       <Animated.View
         style={[styles.slideContainer, { transform: [{ translateX: slideAnim }] }]}
       >
-        <QuestionCard question={currentQuestion.question} />
+        {currentQuestion && <QuestionCard question={currentQuestion.question} />}
+
         <View style={styles.optionsContainer}>
-          {currentQuestion.options.map((option, index) => {
+          {currentQuestion?.options?.map((option, index) => {
             let color = "#9C6CFF";
-            if (selectedOption) {
+            if (answers[currentQuestionIndex]) {
               color = option === currentQuestion.correctAnswer ? "#4CAF50" : "#E53935";
             }
+
+            const scaleValue =
+              answers[currentQuestionIndex] && option === currentQuestion.correctAnswer
+                ? correctAnim
+                : 1;
+
             return (
               <Animated.View
                 key={index}
-                style={{ transform: [{ scale: buttonAnim }], width: "100%", alignItems: "center" }}
+                style={{
+                  width: "100%",
+                  alignItems: "center",
+                  transform: [{ scale: scaleValue as any }],
+                }}
               >
                 <TouchableOpacity
                   style={[styles.optionButton, { backgroundColor: color }]}
                   onPress={() => handleSelect(option)}
                   activeOpacity={0.8}
-                  disabled={!!selectedOption}
+                  disabled={!!answers[currentQuestionIndex]}
                 >
                   <Text style={styles.optionText}>{option}</Text>
                 </TouchableOpacity>
@@ -190,7 +382,7 @@ export default function TelaQuestoes() {
           <View style={{ width: 38 }} />
         )}
 
-        {selectedOption && (
+        {answers[currentQuestionIndex] && (
           <TouchableOpacity
             style={styles.helpButton}
             onPress={() => openModal(setShowExplanation)}
@@ -199,16 +391,27 @@ export default function TelaQuestoes() {
           </TouchableOpacity>
         )}
 
-        {currentQuestionIndex < questions.length - 1 ? (
+        {currentQuestionIndex < totalQuestions - 1 ? (
           <TouchableOpacity onPress={goToNextQuestion}>
             <IconNext />
           </TouchableOpacity>
         ) : (
-          <View style={{ width: 38 }} />
+          <TouchableOpacity
+            style={[styles.finishButton, !allAnswered && { opacity: 0.5 }]}
+            onPress={() => {
+              setShowResults(true);
+              submitResults();
+            }}
+            disabled={!allAnswered}
+          >
+            <Text style={styles.finishText}>Finalizar</Text>
+          </TouchableOpacity>
         )}
       </View>
 
-      {/* ====== MODAL: SAIR ====== */}
+      {/* ====== MODALS ====== */}
+
+      {/* SAIR */}
       {showExitConfirm && (
         <Modal transparent visible>
           <View style={styles.modalOverlay}>
@@ -244,8 +447,8 @@ export default function TelaQuestoes() {
         </Modal>
       )}
 
-      {/* ====== MODAL: EXPLICAÇÃO ====== */}
-      {showExplanation && (
+      {/* EXPLICAÇÃO */}
+      {showExplanation && currentQuestion && (
         <Modal transparent visible>
           <View style={styles.modalOverlay}>
             <Animated.View
@@ -270,7 +473,7 @@ export default function TelaQuestoes() {
         </Modal>
       )}
 
-      {/* ====== MODAL: SELETOR DE QUESTÕES ====== */}
+      {/* SELETOR DE QUESTÕES */}
       {showQuestionSelector && (
         <Modal transparent visible>
           <View style={styles.modalOverlay}>
@@ -284,14 +487,13 @@ export default function TelaQuestoes() {
               <View style={styles.selectorGrid}>
                 {questions.map((q, i) => (
                   <TouchableOpacity
-                    key={i}
+                    key={q.id}
                     style={[
                       styles.selectorButton,
                       i === currentQuestionIndex && { backgroundColor: "#9C6CFF" },
                     ]}
                     onPress={() => {
                       setCurrentQuestionIndex(i);
-                      setSelectedOption(null);
                       closeModal(setShowQuestionSelector);
                     }}
                   >
@@ -305,6 +507,42 @@ export default function TelaQuestoes() {
               >
                 <Text style={styles.closeText}>Fechar</Text>
               </TouchableOpacity>
+            </Animated.View>
+          </View>
+        </Modal>
+      )}
+
+      {/* RESULTADO FINAL */}
+      {showResults && (
+        <Modal transparent visible>
+          <View style={styles.modalOverlay}>
+            <Animated.View
+              style={[
+                styles.modalBox,
+                { opacity: modalAnim, transform: [{ scale: modalAnim }] },
+              ]}
+            >
+              <Text style={styles.modalTitle}>Resultado Final</Text>
+              <Text style={styles.modalText}>
+                Você acertou {totalCorrect} de {totalQuestions} questões.
+              </Text>
+              <Text style={[styles.modalText, { fontWeight: "bold", marginTop: 8 }]}>
+                Aproveitamento: {accuracy}%
+              </Text>
+
+              {postingResults ? (
+                <ActivityIndicator style={{ marginTop: 12 }} />
+              ) : (
+                <TouchableOpacity
+                  style={styles.closeButton}
+                  onPress={() => {
+                    setShowResults(false);
+                    router.navigate(ROUTES.MATERIAS_ALUNO);
+                  }}
+                >
+                  <Text style={styles.closeText}>Fechar</Text>
+                </TouchableOpacity>
+              )}
             </Animated.View>
           </View>
         </Modal>
@@ -361,21 +599,94 @@ const styles = StyleSheet.create({
   },
   progressBar: { height: "100%", backgroundColor: "#00FF99", borderRadius: 3 },
   slideContainer: { width: "100%", alignItems: "center", marginTop: 10 },
-  optionsContainer: { marginTop: 20, width: "100%", alignItems: "center", paddingHorizontal: "7%" },
-  optionButton: { width: "100%", height: 60, borderRadius: 12, alignItems: "center", justifyContent: "center", marginVertical: 8 },
+  optionsContainer: {
+    marginTop: 20,
+    width: "100%",
+    alignItems: "center",
+    paddingHorizontal: "7%",
+  },
+  optionButton: {
+    width: "100%",
+    height: 60,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+    marginVertical: 8,
+  },
   optionText: { color: "#fff", fontWeight: "bold", fontSize: 18 },
-  bottomNav: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", width: "90%", alignSelf: "center", marginTop: 20, marginBottom: 20 },
-  helpButton: { width: 46, height: 46, borderRadius: 23, backgroundColor: "#ffffff22", justifyContent: "center", alignItems: "center" },
+  bottomNav: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    width: "90%",
+    alignSelf: "center",
+    marginTop: 20,
+    marginBottom: 20,
+  },
+  helpButton: {
+    width: 46,
+    height: 46,
+    borderRadius: 23,
+    backgroundColor: "#ffffff22",
+    justifyContent: "center",
+    alignItems: "center",
+  },
   helpText: { color: "#fff", fontWeight: "bold", fontSize: 22 },
-  modalOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.6)", justifyContent: "center", alignItems: "center", padding: 20 },
-  modalBox: { backgroundColor: "#fff", borderRadius: 16, width: "85%", padding: 25, alignItems: "center" },
-  modalTitle: { fontSize: 18, fontWeight: "bold", color: "#2D0C57", marginBottom: 15, textAlign: "center" },
-  modalText: { fontSize: 15, color: "#2D0C57", textAlign: "center", marginBottom: 10 },
-  closeButton: { backgroundColor: "#9C6CFF", borderRadius: 10, paddingHorizontal: 20, paddingVertical: 8, marginTop: 10 },
+  finishButton: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: "#fff",
+  },
+  finishText: { color: "#fff", fontWeight: "bold" },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.6)",
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 20,
+  },
+  modalBox: {
+    backgroundColor: "#fff",
+    borderRadius: 16,
+    width: "85%",
+    padding: 25,
+    alignItems: "center",
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: "bold",
+    color: "#2D0C57",
+    marginBottom: 15,
+    textAlign: "center",
+  },
+  modalText: { fontSize: 15, color: "#2D0C57", textAlign: "center", marginBottom: 6 },
+  closeButton: {
+    backgroundColor: "#9C6CFF",
+    borderRadius: 10,
+    paddingHorizontal: 20,
+    paddingVertical: 8,
+    marginTop: 14,
+  },
   closeText: { color: "#fff", fontWeight: "bold" },
   selectorGrid: { flexDirection: "row", flexWrap: "wrap", justifyContent: "center" },
-  selectorButton: { width: 45, height: 45, borderRadius: 10, borderWidth: 1, borderColor: "#9C6CFF", justifyContent: "center", alignItems: "center", margin: 6 },
+  selectorButton: {
+    width: 45,
+    height: 45,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: "#9C6CFF",
+    justifyContent: "center",
+    alignItems: "center",
+    margin: 6,
+  },
   selectorText: { color: "#2D0C57", fontWeight: "bold", fontSize: 16 },
-  exitButtons: { flexDirection: "row", justifyContent: "space-between", width: "80%", marginTop: 10 },
+  exitButtons: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    width: "80%",
+    marginTop: 10,
+  },
   exitBtn: { borderRadius: 10, paddingVertical: 8, paddingHorizontal: 20 },
 });
