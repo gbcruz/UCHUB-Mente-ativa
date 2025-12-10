@@ -1,54 +1,165 @@
 import IconBack from "@/components/icons/iconBack";
-import { MateriaButton } from "@/components/materiaButton2";
+import { MateriaButton } from "@/components/materiaButton";
+import { API_KEY } from "@/utils/apiKey";
 import { Gradient } from "@/utils/styles/background";
-import { router } from "expo-router";
-import React from "react";
-import { StyleSheet, Text, TouchableOpacity, useWindowDimensions, View } from "react-native";
+import { router, useLocalSearchParams } from "expo-router";
+import React, { useEffect, useState } from "react";
+import {
+  ActivityIndicator,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
+
+type Bloco = {
+  id: number;
+  nome: string;
+  materiaId: number | string;
+  turmaId: number | string;
+};
 
 export default function TelaAtividades() {
-  const { width } = useWindowDimensions();
+  const { materiaId, materiaNome, usuario: usuarioParam } =
+    useLocalSearchParams<{
+      materiaId?: string;
+      materiaNome?: string;
+      usuario?: string;
+    }>();
 
-  // Define a largura adaptativa dos botões conforme o tamanho da tela
-  const buttonWidth =
-    width < 500 ? "85%" : width < 900 ? "70%" : "50%";
+  // tenta reconstruir o usuário (aluno)
+  let usuario: any = null;
+  try {
+    usuario = usuarioParam ? JSON.parse(usuarioParam as string) : null;
+  } catch (e) {
+    console.warn("Erro ao fazer parse de usuario em TelaAtividades:", e);
+  }
+
+  // turma do aluno; se não vier, usa 4 (admin) como fallback p/ não quebrar
+  const TURMA_ID = usuario?.turmaId ?? 4;
+
+  const [atividades, setAtividades] = useState<Bloco[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const carregarAtividades = async () => {
+      try {
+        console.log("TelaAtividades params:", {
+          materiaId,
+          materiaNome,
+          usuarioParam,
+          usuario,
+          TURMA_ID,
+        });
+
+        if (!materiaId) {
+          console.warn("Nenhum materiaId recebido em TelaAtividades");
+          setAtividades([]);
+          setLoading(false);
+          return;
+        }
+
+        const materiaIdNumber = Number(materiaId);
+
+        // 1) busca TODOS os blocos dessa matéria
+        const url = `${API_KEY}/blocos?materiaId=${materiaIdNumber}`;
+        console.log("Buscando blocos em:", url);
+
+        const response = await fetch(url);
+        const data = await response.json();
+        console.log("Resposta /blocos (bruto):", data);
+
+        let lista: Bloco[] = [];
+
+        if (Array.isArray(data)) {
+          lista = data as Bloco[];
+        } else if (data && Array.isArray(data.blocos)) {
+          lista = data.blocos as Bloco[];
+        } else {
+          console.warn("Formato inesperado da API de blocos:", data);
+        }
+
+        // 2) filtra APENAS blocos da turma do aluno
+        const filtrados = lista.filter(
+          (b) => Number(b.turmaId) === Number(TURMA_ID)
+        );
+        console.log("Blocos após filtro por turma:", filtrados);
+
+        setAtividades(filtrados);
+      } catch (error) {
+        console.error("Erro ao buscar atividades:", error);
+        setAtividades([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    carregarAtividades();
+  }, [materiaId, usuarioParam]);
+
+  const naoTemAtividades = !loading && atividades.length === 0;
 
   return (
     <Gradient>
-      {/* TOPO */}
-      <View style={styles.topIcons}>
-        <TouchableOpacity onPress={() => router.navigate("./telaMaterias")}>
+      {/* TOPO – igual estrutura da tela de Matérias */}
+      <View style={styles.topContainer}>
+        <TouchableOpacity onPress={() => router.back()}>
           <IconBack />
         </TouchableOpacity>
       </View>
 
-      {/* TÍTULO */}
-      <Text style={styles.title}>Atividades</Text>
+      {/* TÍTULO – alinhado com o "Matérias" */}
+      <Text style={styles.title}>
+        {materiaNome ? `Atividades de ${materiaNome}` : "Atividades"}
+      </Text>
 
-      {/* LISTA DE ATIVIDADES */}
-      <View style={styles.container}>
-        <MateriaButton
-          nome="Atividade 1"
-          onPress={() => router.navigate("./telaQuestoes")}
-          customWidth={buttonWidth}
-        />
-        <MateriaButton nome="Atividade 2" customWidth={buttonWidth} />
-        <MateriaButton nome="Atividade 3" customWidth={buttonWidth} />
-        <MateriaButton nome="Atividade 4" customWidth={buttonWidth} />
-        <MateriaButton nome="Atividade 5" customWidth={buttonWidth} />
-        <MateriaButton nome="Atividade 6" customWidth={buttonWidth} />
-      </View>
+      {/* CONTEÚDO */}
+      {loading ? (
+        <View style={styles.center}>
+          <ActivityIndicator size="large" color="#fff" />
+        </View>
+      ) : naoTemAtividades ? (
+        <View style={styles.center}>
+          <Text style={styles.emptyText}>Nenhuma atividade encontrada</Text>
+        </View>
+      ) : (
+        <ScrollView
+          style={styles.scrollArea}
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+        >
+          {atividades.map((bloco) => (
+            <View key={bloco.id} style={styles.itemWrapper}>
+              <MateriaButton
+                nome={bloco.nome}
+                onPress={() =>
+                  router.push({
+                    pathname: "/telaQuestoes",
+                    params: {
+                      blocoId: String(bloco.id),
+                      blocoNome: bloco.nome,
+                      usuario: usuarioParam,
+                    },
+                  })
+                }
+              />
+            </View>
+          ))}
+        </ScrollView>
+      )}
     </Gradient>
   );
 }
 
 const styles = StyleSheet.create({
-  topIcons: {
-    flexDirection: "row",
-    justifyContent: "flex-start",
+  // topo alinhado com a tela de Matérias
+  topContainer: {
     width: "100%",
+    alignItems: "flex-start",
+    paddingHorizontal: 20,
     marginTop: 40,
     marginBottom: 20,
-    paddingHorizontal: 25,
   },
   title: {
     color: "#fff",
@@ -57,12 +168,27 @@ const styles = StyleSheet.create({
     textAlign: "center",
     marginBottom: 10,
   },
-  container: {
+  scrollArea: {
     flex: 1,
     width: "100%",
-    alignItems: "center",
-    justifyContent: "flex-start",
     marginTop: 10,
-    paddingBottom: 30,
+  },
+  scrollContent: {
+    alignItems: "center",
+    paddingBottom: 40,
+    gap: 8,
+  },
+  itemWrapper: {
+    width: "100%",
+    alignItems: "center",
+  },
+  center: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  emptyText: {
+    color: "#fff",
+    fontSize: 16,
   },
 });

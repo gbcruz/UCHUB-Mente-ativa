@@ -1,8 +1,10 @@
 import { MateriaButton } from "@/components/materiaButton";
+import { API_KEY } from "@/utils/apiKey";
 import { Gradient } from "@/utils/styles/background";
-import { router } from "expo-router";
-import React, { useRef, useState } from "react";
+import { router, useLocalSearchParams } from "expo-router";
+import React, { useEffect, useRef, useState } from "react";
 import {
+  ActivityIndicator,
   Animated,
   Easing,
   Modal,
@@ -12,11 +14,23 @@ import {
   View,
 } from "react-native";
 
+interface Materia {
+  id: number;
+  nome: string;
+}
+
 export default function TelaMaterias() {
   const [showExitConfirm, setShowExitConfirm] = useState(false);
+  const [materias, setMaterias] = useState<Materia[]>([]);
+  const [loading, setLoading] = useState(true);
+
   const fadeAnim = useRef(new Animated.Value(0)).current;
 
-  // ======= Animação de entrada do pop-up =======
+  // ✅ RECEBE O USUÁRIO DO LOGIN
+  const params = useLocalSearchParams<{ usuario?: string }>();
+  const usuarioParam = params.usuario; // string JSON
+  const usuario = usuarioParam ? JSON.parse(usuarioParam) : null;
+
   const openExitModal = () => {
     setShowExitConfirm(true);
     fadeAnim.setValue(0);
@@ -28,7 +42,6 @@ export default function TelaMaterias() {
     }).start();
   };
 
-  // ======= Animação de saída do pop-up =======
   const closeExitModal = () => {
     Animated.timing(fadeAnim, {
       toValue: 0,
@@ -37,6 +50,22 @@ export default function TelaMaterias() {
       useNativeDriver: true,
     }).start(() => setShowExitConfirm(false));
   };
+
+  async function carregarMaterias() {
+    try {
+      const response = await fetch(`${API_KEY}/materias`);
+      const data = await response.json();
+      setMaterias(data);
+    } catch (error) {
+      console.error("Erro ao carregar matérias:", error);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    carregarMaterias();
+  }, []);
 
   return (
     <Gradient>
@@ -50,21 +79,31 @@ export default function TelaMaterias() {
       {/* TÍTULO */}
       <Text style={styles.title}>Matérias</Text>
 
-      {/* BOTÕES DE MATÉRIAS */}
+      {/* LISTA DE MATÉRIAS */}
       <View style={styles.container}>
-        <MateriaButton
-          nome="Matemática"
-          onPress={() => router.navigate("/telaAtividades")}
-        />
-        <MateriaButton nome="Português" />
-        <MateriaButton nome="História" />
-        <MateriaButton nome="Geografia" />
-        <MateriaButton nome="Filosofia" />
-        <MateriaButton nome="Computação" />
-        <MateriaButton nome="Artes" />
+        {loading && <ActivityIndicator size="large" color="#fff" />}
+
+        {!loading &&
+          materias.map((materia) => (
+            <MateriaButton
+              key={materia.id}
+              nome={materia.nome}
+              onPress={() =>
+                router.push({
+                  pathname: "/telaAtividades",
+                  params: {
+                    materiaId: String(materia.id),
+                    materiaNome: materia.nome,
+                    // ✅ REPASSA O MESMO USUÁRIO
+                    usuario: usuarioParam,
+                  },
+                })
+              }
+            />
+          ))}
       </View>
 
-      {/* ======= POP-UP CONFIRMAR SAÍDA ======= */}
+      {/* POP-UP SAIR */}
       <Modal transparent visible={showExitConfirm} animationType="none">
         <View style={styles.modalOverlay}>
           <Animated.View
@@ -111,10 +150,9 @@ export default function TelaMaterias() {
 }
 
 const styles = StyleSheet.create({
-  // ======= ESTRUTURA PRINCIPAL =======
   topContainer: {
     width: "100%",
-    alignItems: "flex-start", // 👈 mudou aqui (antes era flex-end)
+    alignItems: "flex-start",
     paddingHorizontal: 25,
     marginTop: 40,
     marginBottom: 20,
@@ -144,8 +182,6 @@ const styles = StyleSheet.create({
     marginTop: 10,
     paddingBottom: 30,
   },
-
-  // ======= POP-UP CONFIRMAÇÃO =======
   modalOverlay: {
     flex: 1,
     backgroundColor: "rgba(0,0,0,0.6)",
